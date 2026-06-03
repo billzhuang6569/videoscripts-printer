@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#e8eef2"/>
+  <rect x="88" y="74" width="464" height="212" rx="12" fill="#b8c5ce"/>
+  <rect x="186" y="122" width="268" height="116" rx="10" fill="#ffffff"/>
+  <circle cx="250" cy="180" r="34" fill="#6f8792"/>
+  <rect x="308" y="154" width="96" height="52" rx="6" fill="#cad6dc"/>
+  <text x="320" y="316" text-anchor="middle" font-family="Arial" font-size="26" fill="#2f3b42">Shot 02 Reference</text>
+</svg>

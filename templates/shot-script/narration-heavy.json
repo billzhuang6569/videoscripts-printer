@@ -1,0 +1,12 @@
+{
+  "name": "文本优先",
+  "paper": { "size": "A4", "orientation": "landscape" },
+  "table": { "rowHeight": 104, "density": "normal", "avoidRowPageBreak": true },
+  "columns": [
+    { "fieldId": "shot_no", "label": "镜头号", "visible": true, "width": 60 },
+    { "fieldId": "voiceover", "label": "旁白", "visible": true, "width": 310 },
+    { "fieldId": "visual", "label": "画面内容", "visible": true, "width": 310 },
+    { "fieldId": "reference", "label": "画面参考/分镜", "visible": true, "width": 180 },
+    { "fieldId": "notes", "label": "备注", "visible": true, "width": 130 }
+  ]
+}
