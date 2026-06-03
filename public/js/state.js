@@ -5,14 +5,17 @@ function cloneLayout(layout) {
     ...layout,
     paper: { ...layout.paper },
     table: { ...layout.table },
-    columns: layout.columns.map((column) => ({ ...column }))
+    columns: layout.columns.map((column) => ({ ...column })),
+    missingColumns: (layout.missingColumns ?? []).map((column) => ({ ...column }))
   };
 }
 
 function updateColumn(state, fieldId, updater) {
+  if (!state.layout.columns.some((item) => item.fieldId === fieldId)) return state;
+
   const layout = cloneLayout(state.layout);
   const column = layout.columns.find((item) => item.fieldId === fieldId);
-  if (column) updater(column);
+  updater(column);
   return { ...state, layout };
 }
 
@@ -49,12 +52,14 @@ export function setRowHeight(state, rowHeight) {
 }
 
 export function moveColumn(state, fieldId, nextIndex) {
-  const layout = cloneLayout(state.layout);
-  const currentIndex = layout.columns.findIndex((column) => column.fieldId === fieldId);
-  if (currentIndex === -1) return { ...state, layout };
+  const currentIndex = state.layout.columns.findIndex((column) => column.fieldId === fieldId);
+  if (currentIndex === -1) return state;
 
+  const boundedIndex = Math.min(state.layout.columns.length - 1, Math.max(0, Number(nextIndex) || 0));
+  if (currentIndex === boundedIndex) return state;
+
+  const layout = cloneLayout(state.layout);
   const [column] = layout.columns.splice(currentIndex, 1);
-  const boundedIndex = Math.min(layout.columns.length, Math.max(0, Number(nextIndex) || 0));
   layout.columns.splice(boundedIndex, 0, column);
   return { ...state, layout };
 }

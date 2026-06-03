@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   createInitialState,
@@ -9,13 +10,15 @@ import {
   toTemplate,
   toggleColumnVisible
 } from "../../public/js/state.js";
-import { applyTemplateToFields, visibleColumns } from "../../public/js/layout.js";
+import { applyTemplateToFields, createLayout, visibleColumns } from "../../public/js/layout.js";
 import {
   MAX_COLUMN_WIDTH,
   MAX_ROW_HEIGHT,
   MIN_COLUMN_WIDTH,
   MIN_ROW_HEIGHT
 } from "../../src/shared/schema.mjs";
+
+const publicModulePaths = ["public/js/layout.js", "public/js/state.js", "public/js/schema.js"];
 
 const fields = [
   { id: "shot_no", name: "镜头号", type: "text" },
@@ -44,6 +47,33 @@ test("applyTemplateToFields applies template columns and appends missing fields"
   assert.equal(columns[1].width, 260);
   assert.equal(columns[2].label, "旁白");
   assert.equal(columns[2].visible, true);
+});
+
+test("public modules do not import from src-relative paths", async () => {
+  for (const modulePath of publicModulePaths) {
+    await import(`../../${modulePath}`);
+    const source = await readFile(new URL(`../../${modulePath}`, import.meta.url), "utf8");
+
+    assert.doesNotMatch(source, /from\s+["'][^"']*src\//, `${modulePath} should only import browser-served modules`);
+  }
+});
+
+test("createLayout reports missing template columns without rendering them", () => {
+  const layout = createLayout(fields, template);
+
+  assert.deepEqual(layout.columns.map((column) => column.fieldId), ["shot_no", "reference", "voiceover", "notes"]);
+  assert.deepEqual(layout.missingColumns, [
+    { fieldId: "missing", label: "不存在", visible: true, width: 100 }
+  ]);
+});
+
+test("createLayout normalizes invalid paper settings to schema defaults", () => {
+  const layout = createLayout(fields, {
+    ...template,
+    paper: { size: "Letter", orientation: "diagonal" }
+  });
+
+  assert.deepEqual(layout.paper, { size: "A4", orientation: "landscape" });
 });
 
 test("applyTemplateToFields clamps template widths", () => {
@@ -103,6 +133,17 @@ test("row height and column width changes use shared schema limits", () => {
 
   assert.equal(narrow.layout.columns[0].width, MIN_COLUMN_WIDTH);
   assert.equal(short.layout.table.rowHeight, MIN_ROW_HEIGHT);
+});
+
+test("column updates and same-position moves preserve state identity when they are no-ops", () => {
+  const state = createInitialState({ fields, rows: [] }, template);
+
+  assert.equal(renameColumn(state, "absent", "缺失"), state);
+  assert.equal(resizeColumn(state, "absent", 320), state);
+  assert.equal(toggleColumnVisible(state, "absent"), state);
+  assert.equal(moveColumn(state, "absent", 1), state);
+  assert.equal(moveColumn(state, "reference", 1), state);
+  assert.equal(moveColumn(state, "shot_no", -10), state);
 });
 
 test("toTemplate exports layout settings without session-only data", () => {

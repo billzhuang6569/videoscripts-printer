@@ -1,12 +1,19 @@
 import {
+  DEFAULT_PAPER_ORIENTATION,
+  DEFAULT_PAPER_SIZE,
   DEFAULT_ROW_HEIGHT,
   MAX_COLUMN_WIDTH,
   MAX_ROW_HEIGHT,
   MIN_COLUMN_WIDTH,
-  MIN_ROW_HEIGHT
-} from "../../src/shared/schema.mjs";
+  MIN_ROW_HEIGHT,
+  PAPER_ORIENTATIONS,
+  PAPER_SIZES
+} from "./schema.js";
 
-const DEFAULT_PAPER = Object.freeze({ size: "A4", orientation: "landscape" });
+const DEFAULT_PAPER = Object.freeze({
+  size: DEFAULT_PAPER_SIZE,
+  orientation: DEFAULT_PAPER_ORIENTATION
+});
 
 export function clampColumnWidth(width) {
   const numeric = Number(width);
@@ -22,6 +29,29 @@ export function clampRowHeight(rowHeight) {
 
 function defaultWidthForField(field) {
   return field.type === "image" ? 260 : 180;
+}
+
+function normalizePaper(paper = {}) {
+  return {
+    size: PAPER_SIZES.includes(paper.size) ? paper.size : DEFAULT_PAPER.size,
+    orientation: PAPER_ORIENTATIONS.includes(paper.orientation) ? paper.orientation : DEFAULT_PAPER.orientation
+  };
+}
+
+function missingTemplateColumns(fields, template = {}) {
+  const fieldIds = new Set(fields.map((field) => field.id));
+
+  return (template.columns ?? [])
+    .filter((templateColumn) => !fieldIds.has(templateColumn.fieldId))
+    .map((templateColumn) => ({
+      fieldId: templateColumn.fieldId,
+      label:
+        typeof templateColumn.label === "string" && templateColumn.label.length > 0
+          ? templateColumn.label
+          : templateColumn.fieldId,
+      visible: templateColumn.visible !== false,
+      width: clampColumnWidth(templateColumn.width)
+    }));
 }
 
 export function applyTemplateToFields(fields, template = {}) {
@@ -59,21 +89,18 @@ export function applyTemplateToFields(fields, template = {}) {
 }
 
 export function createLayout(fields, template = {}) {
-  const paper = template.paper ?? DEFAULT_PAPER;
   const table = template.table ?? {};
 
   return {
     name: template.name ?? "",
-    paper: {
-      size: paper.size ?? DEFAULT_PAPER.size,
-      orientation: paper.orientation ?? DEFAULT_PAPER.orientation
-    },
+    paper: normalizePaper(template.paper),
     table: {
       ...table,
       rowHeight: clampRowHeight(table.rowHeight ?? DEFAULT_ROW_HEIGHT),
       avoidRowPageBreak: table.avoidRowPageBreak !== false
     },
-    columns: applyTemplateToFields(fields, template)
+    columns: applyTemplateToFields(fields, template),
+    missingColumns: missingTemplateColumns(fields, template)
   };
 }
 
