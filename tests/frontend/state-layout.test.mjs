@@ -18,7 +18,13 @@ import {
   MIN_ROW_HEIGHT
 } from "../../src/shared/schema.mjs";
 
-const publicModulePaths = ["public/js/layout.js", "public/js/state.js", "public/js/schema.js"];
+const publicModulePaths = [
+  "public/js/api.js",
+  "public/js/app.js",
+  "public/js/layout.js",
+  "public/js/state.js",
+  "public/js/schema.js"
+];
 
 const fields = [
   { id: "shot_no", name: "镜头号", type: "text" },

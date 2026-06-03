@@ -1,0 +1,74 @@
+@page {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+html,
+body {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  background: #fff;
+}
+
+.top-toolbar,
+.settings-panel,
+.paper-meta {
+  display: none !important;
+}
+
+.app-shell,
+.workspace,
+.preview-area,
+.paper-frame,
+.paper-sheet {
+  display: block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.paper-sheet[data-orientation="portrait"] {
+  width: auto !important;
+}
+
+.print-surface,
+.print-table {
+  width: 100% !important;
+}
+
+.print-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: #111;
+  font-size: 10pt;
+}
+
+.print-table th,
+.print-table td {
+  border: 0.5pt solid #9fa7a5;
+  background: #fff !important;
+  vertical-align: top;
+}
+
+.print-table th {
+  padding: 5pt 6pt;
+  font-weight: 700;
+}
+
+.print-table td {
+  padding: 5pt 6pt;
+}
+
+.resize-handle {
+  display: none !important;
+}
+
+.print-image {
+  max-height: 42mm;
+}

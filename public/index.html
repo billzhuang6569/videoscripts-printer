@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HTMLprinter</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/styles/app.css">
+    <link rel="stylesheet" href="/styles/print.css" media="print">
+  </head>
+  <body>
+    <div class="app-shell" data-app-shell>
+      <header class="top-toolbar" aria-label="打印预览工具栏">
+        <div class="brand-block">
+          <h1>HTMLprinter</h1>
+          <p data-status-text>正在加载...</p>
+        </div>
+
+        <div class="toolbar-controls">
+          <label class="toolbar-field">
+            <span>Session</span>
+            <select id="session-select" data-session-select></select>
+          </label>
+
+          <label class="toolbar-field">
+            <span>Template</span>
+            <select id="template-select" data-template-select></select>
+          </label>
+
+          <div class="segmented-control" role="group" aria-label="纸张方向">
+            <button type="button" data-orientation-button="landscape">横向</button>
+            <button type="button" data-orientation-button="portrait">纵向</button>
+          </div>
+
+          <button type="button" class="secondary-action" data-save-template>保存模板</button>
+          <button type="button" class="primary-action" data-print>打印</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="settings-panel" aria-label="版式设置">
+          <section class="settings-section">
+            <div class="section-heading">
+              <h2>表格</h2>
+              <output data-row-height-output>96 px</output>
+            </div>
+            <label class="range-field">
+              <span>行高</span>
+              <input type="range" min="56" max="260" step="4" data-row-height-slider>
+            </label>
+          </section>
+
+          <section class="settings-section warning-section" data-missing-warning hidden>
+            <h2>缺失字段</h2>
+            <p data-missing-warning-text></p>
+          </section>
+
+          <section class="settings-section field-section">
+            <div class="section-heading">
+              <h2>字段</h2>
+              <span data-field-count>0</span>
+            </div>
+            <div class="field-list" data-field-list></div>
+          </section>
+        </aside>
+
+        <section class="preview-area" aria-label="A4 纸张预览">
+          <div class="paper-frame">
+            <div class="paper-sheet" data-paper-sheet>
+              <div class="paper-meta">
+                <span data-preview-title>未选择 session</span>
+                <span data-preview-paper>A4</span>
+              </div>
+              <div class="print-surface" data-print-surface></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>
