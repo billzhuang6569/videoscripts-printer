@@ -598,6 +598,30 @@ button:focus-visible {
   box-shadow: inset 0 0 0 2px rgb(21 127 115 / 18%);
 }
 
+.editable-cell.is-inline-editing {
+  padding: 0;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #2f6df6;
+}
+
+.inline-cell-editor {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  max-height: 420px;
+  resize: vertical;
+  border: 0;
+  padding: 8px 9px;
+  background: #fff;
+  color: #1d2423;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", "Microsoft YaHei", monospace;
+  outline: none;
+}
+
+.inline-cell-editor::placeholder {
+  color: #98a4a1;
+}
+
 .print-group-row th {
   border-color: #bdccc9;
   padding: 7px 9px;
@@ -859,125 +883,45 @@ button:focus-visible {
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: var(--chrome-strong);
-  box-shadow: 0 18px 54px rgb(20 35 33 / 24%);
+  background: #fff;
+  box-shadow: 0 18px 54px rgb(20 35 33 / 22%);
 }
 
-.cell-editor-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
-  color: #34403e;
-  font-size: 12px;
-  font-weight: 780;
-}
-
-.cell-editor-heading button {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.cell-editor-heading button:hover {
-  background: #edf3f2;
-  color: var(--text);
-}
-
-.cell-text-editor {
-  padding: 10px 12px 0;
-}
-
-.cell-text-editor textarea {
-  display: block;
-  width: 100%;
-  min-height: 132px;
-  max-height: 280px;
-  resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 9px 10px;
-  background: #fbfdfc;
-  color: var(--text);
-  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", monospace;
-  outline: none;
-}
-
-.cell-text-editor textarea:focus,
 .cell-tag-editor input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgb(21 127 115 / 14%);
+  box-shadow: inset 0 -2px 0 #2f6df6;
 }
 
 .cell-tag-editor {
   display: grid;
-  gap: 8px;
-  padding: 10px 12px 0;
-}
-
-.cell-text-editor[hidden],
-.cell-tag-editor[hidden] {
-  display: none;
-}
-
-.tag-editor-selected {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 28px;
-}
-
-.tag-editor-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  border: 0;
-  border-radius: 999px;
-  padding: 2px 8px;
-  background: #2ebfac;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 760;
-}
-
-.tag-editor-pill span {
-  font-size: 16px;
-  line-height: 1;
+  gap: 0;
 }
 
 .tag-editor-empty {
   color: var(--muted);
-  font-size: 12px;
-  line-height: 28px;
+  font-size: 14px;
+  line-height: 40px;
+  padding: 0 10px;
 }
 
 .cell-tag-editor input {
   width: 100%;
-  height: 38px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 0 10px;
+  height: 48px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0 16px;
+  color: var(--text);
+  font: 15px/1.4 "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   outline: none;
 }
 
 .tag-editor-options {
   display: grid;
-  max-height: 220px;
+  gap: 2px;
+  max-height: 280px;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 5px;
-  background: #fbfdfc;
+  padding: 8px;
+  background: #fff;
 }
 
 .tag-option {
@@ -986,29 +930,42 @@ button:focus-visible {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  min-height: 36px;
+  min-height: 42px;
   border: 0;
-  border-radius: 6px;
-  padding: 5px 7px;
+  border-radius: 7px;
+  padding: 6px 10px;
   background: transparent;
-  color: var(--muted);
+  color: #263532;
   text-align: left;
+  font: 14px/1.4 "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  cursor: pointer;
 }
 
 .tag-option:hover,
 .tag-option.is-selected {
-  background: #edf3f2;
+  background: #edf0ef;
+}
+
+.tag-option-state {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #7d8986;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.tag-option.is-selected .tag-option-state {
+  color: #2f6df6;
+  letter-spacing: 0;
 }
 
 .tag-option-create {
   justify-content: flex-start;
-}
-
-.cell-editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px;
+  color: var(--muted);
 }
 
 .print-image-list {

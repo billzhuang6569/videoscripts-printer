@@ -30,13 +30,7 @@ import { renderPrintTable } from "./render.js";
 const selectors = {
   appShell: "[data-app-shell]",
   cellEditor: "[data-cell-editor]",
-  cellEditorCancel: "[data-cell-editor-cancel]",
-  cellEditorClose: "[data-cell-editor-close]",
-  cellEditorSave: "[data-cell-editor-save]",
-  cellEditorTextarea: "[data-cell-editor-textarea]",
-  cellEditorTitle: "[data-cell-editor-title]",
   cellTagEditor: "[data-cell-tag-editor]",
-  cellTextEditor: "[data-cell-text-editor]",
   fieldCount: "[data-field-count]",
   fieldList: "[data-field-list]",
   groupField: "[data-group-field]",
@@ -62,8 +56,7 @@ const selectors = {
   templateNameInput: "[data-template-name-input]",
   templateSelect: "[data-template-select]",
   tagEditorOptions: "[data-tag-editor-options]",
-  tagEditorSearch: "[data-tag-editor-search]",
-  tagEditorSelected: "[data-tag-editor-selected]"
+  tagEditorSearch: "[data-tag-editor-search]"
 };
 
 const els = {};
@@ -76,6 +69,7 @@ let loadSequence = 0;
 let draggedFieldId = "";
 let fieldPointerDrag = null;
 let cellEditorState = null;
+let inlineEditorState = null;
 let sessionLayoutSaveTimer = 0;
 let sessionDataSaveTimer = 0;
 let templateNameResolver = null;
@@ -506,19 +500,6 @@ function positionCellEditor(anchor) {
   els.cellEditor.style.top = `${Math.max(12, top)}px`;
 }
 
-function renderSelectedTags() {
-  const tags = selectedTags();
-  els.tagEditorSelected.innerHTML =
-    tags.length === 0
-      ? `<span class="tag-editor-empty">未选择</span>`
-      : tags
-          .map(
-            (tag) =>
-              `<button type="button" class="tag-editor-pill" data-tag-remove="${escapeAttr(tag)}">${escapeHtml(tag)}<span aria-hidden="true">×</span></button>`
-          )
-          .join("");
-}
-
 function renderTagOptions() {
   if (!cellEditorState) return;
   const query = els.tagEditorSearch.value.trim();
@@ -530,19 +511,36 @@ function renderTagOptions() {
   const optionMarkup = visibleOptions
     .map((tag) => {
       const isSelected = selected.has(tag);
-      return `<button type="button" class="tag-option${isSelected ? " is-selected" : ""}" data-tag-option="${escapeAttr(tag)}"><span class="cell-tag">${escapeHtml(tag)}</span>${isSelected ? "<span>已选</span>" : ""}</button>`;
+      return `<button type="button" class="tag-option${isSelected ? " is-selected" : ""}" data-tag-option="${escapeAttr(tag)}"><span class="cell-tag">${escapeHtml(tag)}</span><span class="tag-option-state">${isSelected ? "✓" : "..."}</span></button>`;
     })
     .join("");
   const createMarkup = canCreate
-    ? `<button type="button" class="tag-option tag-option-create" data-tag-create="${escapeAttr(query)}">创建 <span class="cell-tag">${escapeHtml(query)}</span></button>`
+    ? `<button type="button" class="tag-option tag-option-create" data-tag-create="${escapeAttr(query)}"><span>创建</span><span class="cell-tag">${escapeHtml(query)}</span></button>`
     : "";
 
   els.tagEditorOptions.innerHTML = `${optionMarkup}${createMarkup}` || `<div class="tag-editor-empty">没有匹配选项</div>`;
 }
 
 function renderTagEditor() {
-  renderSelectedTags();
   renderTagOptions();
+}
+
+function valueFromTagEditor() {
+  const { fieldId } = cellEditorState;
+  return fieldById(fieldId)?.type === "multiSelect" ? selectedTags() : selectedTags().join(" / ");
+}
+
+function persistTagEditorValue() {
+  if (!state || !cellEditorState) return;
+  const { rowId, fieldId } = cellEditorState;
+  state = updateCellValue(state, rowId, fieldId, valueFromTagEditor());
+  renderPreview();
+  const nextCell = els.printSurface.querySelector(
+    `td[data-row-id="${CSS.escape(rowId)}"][data-field="${CSS.escape(fieldId)}"]`
+  );
+  if (nextCell) positionCellEditor(nextCell);
+  renderTagEditor();
+  scheduleSessionDataSave();
 }
 
 function toggleEditorTag(tag) {
@@ -552,55 +550,18 @@ function toggleEditorTag(tag) {
 
   const tags = selectedTags();
   cellEditorState.tags = tags.includes(value) ? tags.filter((item) => item !== value) : [...tags, value];
-  renderTagEditor();
+  persistTagEditorValue();
 }
 
-function removeEditorTag(tag) {
-  if (!cellEditorState) return;
-  cellEditorState.tags = selectedTags().filter((item) => item !== tag);
-  renderTagEditor();
-}
-
-function openCellEditor(cell) {
-  if (!state || !cell) return;
-
-  const rowId = cell.dataset.rowId;
-  const fieldId = cell.dataset.field;
-  const type = cellType(fieldId);
-  const value = cellValue(rowId, fieldId);
-  const column = columnByFieldId(fieldId);
-
-  if (type === "image" && normalizeList(value).length === 0) {
-    setStatus("图片字段当前没有可编辑附件", "neutral");
-    return;
+function valueFromInlineEditor() {
+  const { rowId, fieldId, type, textarea } = inlineEditorState;
+  if (type === "image") {
+    const captions = textarea.value.split(/\r?\n/u);
+    return normalizeList(cellValue(rowId, fieldId)).map((image, index) =>
+      image && typeof image === "object" ? { ...image, caption: captions[index] ?? "" } : image
+    );
   }
-
-  cellEditorState = {
-    rowId,
-    fieldId,
-    type,
-    tags: type === "multiSelect" ? normalizeTagList(value) : []
-  };
-
-  els.cellEditorTitle.textContent = columnTitle(column ?? { fieldId });
-  els.cellEditor.hidden = false;
-  els.cellTextEditor.hidden = type === "multiSelect";
-  els.cellTagEditor.hidden = type !== "multiSelect";
-
-  if (type === "multiSelect") {
-    els.tagEditorSearch.value = "";
-    renderTagEditor();
-    window.setTimeout(() => els.tagEditorSearch.focus(), 0);
-  } else {
-    els.cellEditorTextarea.value = textEditorValue(type, value);
-    els.cellEditorTextarea.placeholder = type === "image" ? "每行对应一张图片的说明文字，支持 Markdown" : "支持 Markdown";
-    window.setTimeout(() => {
-      els.cellEditorTextarea.focus();
-      els.cellEditorTextarea.select();
-    }, 0);
-  }
-
-  positionCellEditor(cell);
+  return textarea.value;
 }
 
 function closeCellEditor() {
@@ -608,27 +569,112 @@ function closeCellEditor() {
   els.cellEditor.hidden = true;
 }
 
-function valueFromCellEditor() {
-  const { rowId, fieldId, type } = cellEditorState;
-  if (type === "multiSelect") {
-    return fieldById(fieldId)?.type === "multiSelect" ? selectedTags() : selectedTags().join(" / ");
-  }
-  if (type === "image") {
-    const captions = els.cellEditorTextarea.value.split(/\r?\n/u);
-    return normalizeList(cellValue(rowId, fieldId)).map((image, index) =>
-      image && typeof image === "object" ? { ...image, caption: captions[index] ?? "" } : image
-    );
-  }
-  return els.cellEditorTextarea.value;
-}
-
-function saveCellEditor() {
-  if (!state || !cellEditorState) return;
-  const { rowId, fieldId } = cellEditorState;
-  state = updateCellValue(state, rowId, fieldId, valueFromCellEditor());
-  closeCellEditor();
+function commitInlineCellEditor() {
+  if (!state || !inlineEditorState) return;
+  const { rowId, fieldId } = inlineEditorState;
+  state = updateCellValue(state, rowId, fieldId, valueFromInlineEditor());
+  inlineEditorState = null;
   renderPreview();
   scheduleSessionDataSave();
+}
+
+function cancelInlineCellEditor() {
+  if (!inlineEditorState) return;
+  inlineEditorState = null;
+  renderPreview();
+}
+
+function openInlineCellEditor(cell) {
+  if (!state || !cell) return;
+  if (inlineEditorState?.cell === cell) {
+    inlineEditorState.textarea.focus();
+    return;
+  }
+
+  commitInlineCellEditor();
+  closeCellEditor();
+
+  const rowId = cell.dataset.rowId;
+  const fieldId = cell.dataset.field;
+  const type = cellType(fieldId);
+  const value = cellValue(rowId, fieldId);
+
+  if (type === "image" && normalizeList(value).length === 0) {
+    setStatus("图片字段当前没有可编辑附件", "neutral");
+    return;
+  }
+
+  cell.classList.add("is-inline-editing");
+  cell.innerHTML = "";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "inline-cell-editor";
+  textarea.value = textEditorValue(type, value);
+  textarea.placeholder = type === "image" ? "每行对应一张图片的说明文字，支持 Markdown" : "输入 Markdown，完成后自动渲染";
+  textarea.spellcheck = false;
+  textarea.style.minHeight = `${Math.max(64, Math.round(cell.getBoundingClientRect().height))}px`;
+  cell.append(textarea);
+
+  inlineEditorState = {
+    rowId,
+    fieldId,
+    type,
+    cell,
+    textarea
+  };
+
+  textarea.addEventListener("blur", () => {
+    commitInlineCellEditor();
+  });
+
+  textarea.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      commitInlineCellEditor();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelInlineCellEditor();
+    }
+  });
+
+  window.setTimeout(() => {
+    textarea.focus();
+    textarea.select();
+  }, 0);
+}
+
+function openTagEditor(cell) {
+  if (!state || !cell) return;
+
+  commitInlineCellEditor();
+
+  const rowId = cell.dataset.rowId;
+  const fieldId = cell.dataset.field;
+  const type = cellType(fieldId);
+  const value = cellValue(rowId, fieldId);
+
+  cellEditorState = {
+    rowId,
+    fieldId,
+    type,
+    tags: normalizeTagList(value)
+  };
+
+  els.cellEditor.hidden = false;
+  els.tagEditorSearch.value = "";
+  renderTagEditor();
+  positionCellEditor(cell);
+  window.setTimeout(() => els.tagEditorSearch.focus(), 0);
+}
+
+function openCellEditor(cell) {
+  if (!state || !cell) return;
+
+  const fieldId = cell.dataset.field;
+  const type = cellType(fieldId);
+  if (type === "multiSelect") openTagEditor(cell);
+  else openInlineCellEditor(cell);
 }
 
 function clearDropMarkers() {
@@ -904,21 +950,10 @@ function bindEvents() {
 
   els.printSurface.addEventListener("click", (event) => {
     if (event.target.closest("[data-resize-field]")) return;
+    if (event.target.closest(".inline-cell-editor")) return;
     const cell = event.target.closest("td[data-row-id][data-field]");
     if (!cell) return;
     openCellEditor(cell);
-  });
-
-  els.cellEditorSave.addEventListener("click", saveCellEditor);
-  els.cellEditorCancel.addEventListener("click", closeCellEditor);
-  els.cellEditorClose.addEventListener("click", closeCellEditor);
-
-  els.cellEditorTextarea.addEventListener("keydown", (event) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-      event.preventDefault();
-      saveCellEditor();
-    }
-    if (event.key === "Escape") closeCellEditor();
   });
 
   els.tagEditorSearch.addEventListener("input", renderTagOptions);
@@ -927,14 +962,8 @@ function bindEvents() {
       event.preventDefault();
       toggleEditorTag(els.tagEditorSearch.value);
       els.tagEditorSearch.value = "";
-      renderTagEditor();
     }
     if (event.key === "Escape") closeCellEditor();
-  });
-
-  els.tagEditorSelected.addEventListener("click", (event) => {
-    const removeButton = event.target.closest("[data-tag-remove]");
-    if (removeButton) removeEditorTag(removeButton.dataset.tagRemove);
   });
 
   els.tagEditorOptions.addEventListener("click", (event) => {
@@ -942,7 +971,6 @@ function bindEvents() {
     if (!option) return;
     toggleEditorTag(option.dataset.tagOption ?? option.dataset.tagCreate);
     if (option.dataset.tagCreate) els.tagEditorSearch.value = "";
-    renderTagEditor();
   });
 
   document.addEventListener("pointerdown", (event) => {

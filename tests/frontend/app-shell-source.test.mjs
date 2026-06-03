@@ -138,8 +138,14 @@ test("app shell supports editable cells and tag options", async () => {
 
   assert.match(source, /saveSessionData\(state\.sessionId, state\.session\)/);
   assert.match(source, /function openCellEditor\(cell\)/);
+  assert.match(source, /function openInlineCellEditor\(cell\)/);
+  assert.match(source, /function commitInlineCellEditor\(\)/);
+  assert.match(source, /textarea\.className = "inline-cell-editor"/);
   assert.match(source, /td\[data-row-id\]\[data-field\]/);
   assert.match(source, /function renderTagOptions\(\)/);
   assert.match(source, /data-tag-create/);
-  assert.match(source, /state = updateCellValue\(state, rowId, fieldId, valueFromCellEditor\(\)\)/);
+  assert.match(source, /function persistTagEditorValue\(\)/);
+  assert.match(source, /state = updateCellValue\(state, rowId, fieldId, valueFromInlineEditor\(\)\)/);
+  assert.match(source, /state = updateCellValue\(state, rowId, fieldId, valueFromTagEditor\(\)\)/);
+  assert.doesNotMatch(source, /cellEditorSave|data-cell-editor-save|saveCellEditor/);
 });
