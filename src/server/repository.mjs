@@ -1,4 +1,5 @@
-import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, lstat, mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const TEMPLATE_DIR = path.join("templates", "shot-script");
@@ -12,6 +13,14 @@ const NAME_ALIASES = new Map([
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.length > 0;
+}
+
+function isSinglePathSegment(value) {
+  return isNonEmptyString(value) && !path.isAbsolute(value) && !value.includes("/") && !value.includes("\\") && value !== "." && value !== "..";
+}
+
+function isTemplateFileName(value) {
+  return isSinglePathSegment(value) && value.length > ".json".length && value.endsWith(".json");
 }
 
 function readTitle(value, fallback) {
@@ -33,18 +42,35 @@ async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
 }
 
+function shortHash(value) {
+  return createHash("sha256").update(value).digest("hex").slice(0, 8);
+}
+
 export function safeTemplateFileName(name) {
   const alias = NAME_ALIASES.get(name);
-  const raw = alias ?? (typeof name === "string" ? name : "");
+  if (alias) return `${alias}.json`;
+
+  const raw = typeof name === "string" ? name : "";
+  const normalized = raw.normalize("NFKC");
   const slug = raw
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
+    .normalize("NFKC")
+    .replace(/[\\/]+/gu, " ")
+    .replace(/[^\p{Letter}\p{Number}_\s-]+/gu, "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/\s+/gu, "-")
+    .replace(/-+/gu, "-");
 
-  return `${slug || "template"}.json`;
+  if (!slug) return raw.length > 0 ? `template-${shortHash(normalized)}.json` : "template.json";
+
+  const comparable = normalized
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/gu, "-")
+    .replace(/-+/gu, "-");
+  const suffix = slug === comparable ? "" : `-${shortHash(normalized)}`;
+
+  return `${slug}${suffix}.json`;
 }
 
 export function ensureInside(basePath, candidatePath, message = "非法路径") {
@@ -59,17 +85,31 @@ export function ensureInside(basePath, candidatePath, message = "非法路径") 
   throw new Error(message);
 }
 
-export function sessionAssetPath(rootDir, sessionId, assetPath) {
-  if (!isNonEmptyString(sessionId) || path.isAbsolute(sessionId)) {
+export async function sessionAssetPath(rootDir, sessionId, assetPath) {
+  if (!isSinglePathSegment(sessionId)) {
     throw new Error("非法 session 路径");
   }
-  if (!isNonEmptyString(assetPath) || path.isAbsolute(assetPath)) {
+  if (!isNonEmptyString(assetPath) || path.isAbsolute(assetPath) || assetPath.includes("\\")) {
     throw new Error("非法图片路径");
   }
 
   const importsDir = path.join(rootDir, "imports");
   const sessionDir = ensureInside(importsDir, path.join(importsDir, sessionId), "非法 session 路径");
-  return ensureInside(sessionDir, path.join(sessionDir, assetPath), "非法图片路径");
+  const assetCandidate = ensureInside(sessionDir, path.join(sessionDir, assetPath), "非法图片路径");
+  const sessionStats = await lstat(sessionDir);
+
+  if (!sessionStats.isDirectory() || sessionStats.isSymbolicLink()) {
+    throw new Error("非法 session 路径");
+  }
+
+  const [importsRealPath, sessionRealPath, assetRealPath] = await Promise.all([
+    realpath(importsDir),
+    realpath(sessionDir),
+    realpath(assetCandidate)
+  ]);
+
+  ensureInside(importsRealPath, sessionRealPath, "非法 session 路径");
+  return ensureInside(sessionRealPath, assetRealPath, "非法图片路径");
 }
 
 export function createRepository(rootDir) {
@@ -97,7 +137,7 @@ export function createRepository(rootDir) {
     },
 
     async loadSession(sessionId) {
-      if (!isNonEmptyString(sessionId) || path.isAbsolute(sessionId)) {
+      if (!isSinglePathSegment(sessionId)) {
         throw new Error("非法 session 路径");
       }
 
@@ -123,7 +163,7 @@ export function createRepository(rootDir) {
     },
 
     async loadTemplate(templateId) {
-      if (!isNonEmptyString(templateId) || path.isAbsolute(templateId)) {
+      if (!isTemplateFileName(templateId)) {
         throw new Error("非法模板路径");
       }
 
@@ -136,12 +176,21 @@ export function createRepository(rootDir) {
 
       const id = safeTemplateFileName(template?.name);
       const filePath = ensureInside(templatesDir, path.join(templatesDir, id), "非法模板路径");
+      try {
+        const existing = await lstat(filePath);
+        if (existing.isSymbolicLink()) {
+          throw new Error("非法模板路径");
+        }
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
+      }
+
       await writeFile(filePath, `${JSON.stringify(template, null, 2)}\n`, "utf8");
 
       return { id, title: readTitle(template, id.replace(/\.json$/, "")) };
     },
 
-    resolveAsset(sessionId, assetPath) {
+    async resolveAsset(sessionId, assetPath) {
       return sessionAssetPath(rootDir, sessionId, assetPath);
     }
   };
