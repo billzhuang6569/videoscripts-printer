@@ -11,8 +11,8 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const bundledProjectRoot = path.resolve(__dirname, "../../..");
-const DEFAULT_REPO = "https://github.com/billzhuang6569/HTMLprinter.git";
-const DEFAULT_INSTALL_DIR = path.join(os.homedir(), "Documents", "ZhuangSir", "HTMLprinter");
+const DEFAULT_REPO = "https://github.com/billzhuang6569/videoscripts-printer.git";
+const DEFAULT_INSTALL_DIR = path.join(os.homedir(), "Documents", "ZhuangSir", "videoscripts-printer");
 const DEFAULT_PORT = 4173;
 
 function argValue(name) {
@@ -38,7 +38,7 @@ function isPrinterRoot(dir) {
 
   try {
     const packageJson = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8"));
-    return packageJson.name === "htmlprinter";
+    return ["videoscripts-printer", "htmlprinter"].includes(packageJson.name);
   } catch {
     return false;
   }
@@ -62,7 +62,9 @@ function candidateRoots() {
     ...parentsFrom(process.cwd()),
     bundledProjectRoot,
     path.join(os.homedir(), "HTMLprinter"),
+    path.join(os.homedir(), "videoscripts-printer"),
     path.join(os.homedir(), "Documents", "HTMLprinter"),
+    path.join(os.homedir(), "Documents", "videoscripts-printer"),
     DEFAULT_INSTALL_DIR
   ];
 

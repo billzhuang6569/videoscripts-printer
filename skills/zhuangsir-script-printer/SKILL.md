@@ -47,12 +47,12 @@ Always ensure the HTMLprinter app exists before writing a session. Resolve scrip
 4. If the user already has a local copy, prefer that copy by passing:
 
    ```sh
-   node skills/zhuangsir-script-printer/scripts/ensure-printer.mjs --root <HTMLprinter-project-root> --start
+   node skills/zhuangsir-script-printer/scripts/ensure-printer.mjs --root <videoscripts-printer-project-root> --start
    ```
 
 5. If install fails because of network or Git availability, report one short recovery instruction: install Git or download the repository manually, then rerun `ensure-printer.mjs --root <downloaded-folder> --start`.
 
-Default install target is `~/Documents/ZhuangSir/HTMLprinter`. The installer clones `https://github.com/billzhuang6569/HTMLprinter.git`, validates the expected app files, and starts the local server on port `4173`.
+Default install target is `~/Documents/ZhuangSir/videoscripts-printer`. The installer clones `https://github.com/billzhuang6569/videoscripts-printer.git`, validates the expected app files, and starts the local server on port `4173`.
 
 ## Workflow
 
@@ -70,7 +70,7 @@ Default install target is `~/Documents/ZhuangSir/HTMLprinter`. The installer clo
 5. Write the session with the `root` returned by `ensure-printer.mjs`:
 
    ```sh
-   node skills/zhuangsir-script-printer/scripts/write-session.mjs --root <HTMLprinter-project-root> --input <session-json-file>
+   node skills/zhuangsir-script-printer/scripts/write-session.mjs --root <videoscripts-printer-project-root> --input <session-json-file>
    ```
 
    Use `--session-id <id>` only when the user gave a meaningful stable id.

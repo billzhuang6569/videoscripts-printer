@@ -190,7 +190,7 @@ node skills/zhuangsir-script-printer/scripts/ensure-printer.mjs --start
 写入一个 session：
 
 ```sh
-node skills/zhuangsir-script-printer/scripts/write-session.mjs --root <HTMLprinter-project-root> --input <session-json-file>
+node skills/zhuangsir-script-printer/scripts/write-session.mjs --root <videoscripts-printer-project-root> --input <session-json-file>
 ```
 
 更多细节可以看：
