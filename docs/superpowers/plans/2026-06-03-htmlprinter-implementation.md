@@ -1799,7 +1799,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add public/index.html public/js/api.js public/js/app.js public/styles/app.css public/styles/print.css
+git add public/index.html public/js/api.js public/js/app.js public/styles/app.css public/styles/print.css tests/frontend/api.test.mjs tests/frontend/app-shell-source.test.mjs tests/frontend/print-css.test.mjs tests/frontend/state-layout.test.mjs
 git commit -m "feat: add browser print preview shell"
 ```
 
