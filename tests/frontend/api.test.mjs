@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { listSessions, listTemplates, loadSession, loadTemplate, saveTemplate } from "../../public/js/api.js";
+import {
+  listSessions,
+  listTemplates,
+  loadSession,
+  loadSessionLayout,
+  loadTemplate,
+  saveSessionLayout,
+  saveTemplate
+} from "../../public/js/api.js";
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -22,22 +30,28 @@ test("api module calls browser-safe server endpoints", async (t) => {
 
   await listSessions();
   await loadSession("sample shoot");
+  await loadSessionLayout("sample shoot");
   await listTemplates();
   await loadTemplate("balanced landscape.json");
   await saveTemplate({ name: "保存模板", paper: {}, table: {}, columns: [] });
+  await saveSessionLayout("sample shoot", { name: "本次排版", paper: {}, table: {}, columns: [] });
 
   assert.deepEqual(
     calls.map((call) => call.url),
     [
       "/api/sessions",
       "/api/sessions/sample%20shoot",
+      "/api/sessions/sample%20shoot/layout",
       "/api/templates",
       "/api/templates/balanced%20landscape.json",
-      "/api/templates"
+      "/api/templates",
+      "/api/sessions/sample%20shoot/layout"
     ]
   );
-  assert.equal(calls[4].options.method, "POST");
-  assert.equal(calls[4].options.headers["content-type"], "application/json");
+  assert.equal(calls[5].options.method, "POST");
+  assert.equal(calls[5].options.headers["content-type"], "application/json");
+  assert.equal(calls[6].options.method, "PUT");
+  assert.equal(calls[6].options.headers["content-type"], "application/json");
 });
 
 test("api module surfaces JSON error messages", async (t) => {

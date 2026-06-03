@@ -174,6 +174,11 @@ function assetRouteParts(pathname) {
   return [decodeURIComponent(rest.slice(0, slashIndex)), decodeURIComponent(rest.slice(slashIndex + 1))];
 }
 
+function sessionLayoutRouteParts(pathname) {
+  const match = pathname.match(/^\/api\/sessions\/([^/]+)\/layout$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function staticFilePath(publicDir, pathname) {
   const requestPath = pathname === "/" ? "/index.html" : pathname;
   return ensureInside(publicDir, path.join(publicDir, decodeURIComponent(requestPath)), "非法静态文件路径");
@@ -189,6 +194,28 @@ export function createAppServer({ rootDir = DEFAULT_ROOT, publicDir = DEFAULT_PU
       if (url.pathname === "/api/sessions") {
         if (req.method === "GET") return sendJson(res, 200, await repo.listSessions());
         return methodNotAllowed(res, ["GET"]);
+      }
+
+      const sessionLayoutId = sessionLayoutRouteParts(url.pathname);
+      if (sessionLayoutId) {
+        if (req.method === "GET") {
+          const layout = await repo.loadSessionLayout(sessionLayoutId);
+          if (layout === null) return sendJson(res, 200, null);
+          const session = await repo.loadSession(sessionLayoutId);
+          const result = validateTemplate(layout, { fieldIds: session.fields.map((field) => field.id) });
+          if (result.errors.length > 0) throw validationError(result.errors);
+          return sendJson(res, 200, layout);
+        }
+
+        if (req.method === "PUT") {
+          const layout = await readJsonBody(req);
+          const session = await repo.loadSession(sessionLayoutId);
+          const result = validateTemplate(layout, { fieldIds: session.fields.map((field) => field.id) });
+          if (result.errors.length > 0) throw validationError(result.errors);
+          return sendJson(res, 200, await repo.saveSessionLayout(sessionLayoutId, layout));
+        }
+
+        return methodNotAllowed(res, ["GET", "PUT"]);
       }
 
       if (url.pathname.startsWith("/api/sessions/")) {
@@ -237,6 +264,6 @@ export function createAppServer({ rootDir = DEFAULT_ROOT, publicDir = DEFAULT_PU
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 4173);
   createAppServer().listen(port, () => {
-    console.log(`HTMLprinter running at http://localhost:${port}`);
+    console.log(`庄Sir的脚本打印器 running at http://localhost:${port}`);
   });
 }

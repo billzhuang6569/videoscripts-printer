@@ -50,7 +50,7 @@ async function fixtureRoot() {
     })
   );
   await writeFile(path.join(root, "imports", "sample", "assets", "nested", "shot.svg"), "<svg/>");
-  await writeFile(path.join(publicDir, "index.html"), "<!doctype html><title>HTMLprinter</title>");
+  await writeFile(path.join(publicDir, "index.html"), "<!doctype html><title>庄Sir的脚本打印器</title>");
 
   return { root, publicDir };
 }
@@ -119,6 +119,36 @@ test("server loads and saves validated templates", async (t) => {
   assert.equal(reloaded.columns[0].width, 88);
 });
 
+test("server loads and saves validated per-session layout", async (t) => {
+  const base = await withServer(t);
+  const initial = await fetch(`${base}/api/sessions/sample/layout`).then((res) => res.json());
+  const layout = {
+    name: "Sample Layout",
+    paper: { size: "A4", orientation: "portrait" },
+    table: { rowHeight: 120, avoidRowPageBreak: true },
+    columns: [{ fieldId: "shot_no", label: "镜次", visible: true, width: 88 }]
+  };
+  const saved = await fetch(`${base}/api/sessions/sample/layout`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(layout)
+  });
+  const savedBody = await saved.json();
+  const reloaded = await fetch(`${base}/api/sessions/sample/layout`).then((res) => res.json());
+  const invalid = await fetch(`${base}/api/sessions/sample/layout`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...layout, columns: [{ fieldId: "missing", label: "坏列", visible: true, width: 88 }] })
+  });
+
+  assert.equal(initial, null);
+  assert.equal(saved.status, 200);
+  assert.equal(savedBody.id, "sample");
+  assert.equal(reloaded.name, "Sample Layout");
+  assert.equal(reloaded.columns[0].label, "镜次");
+  assert.equal(invalid.status, 422);
+});
+
 test("server rejects malformed percent-encoded paths as client errors", async (t) => {
   const base = await withServer(t);
 
@@ -182,7 +212,7 @@ test("server serves static frontend and encoded session assets", async (t) => {
   const missingAsset = await fetch(`${base}/assets/sample/${encodeURIComponent("assets/missing.svg")}`);
 
   assert.equal(html.status, 200);
-  assert.match(html.body, /HTMLprinter/);
+  assert.match(html.body, /庄Sir的脚本打印器/);
   assert.equal(asset.status, 200);
   assert.equal(asset.headers.get("content-type"), "image/svg+xml");
   assert.equal(await asset.text(), "<svg/>");

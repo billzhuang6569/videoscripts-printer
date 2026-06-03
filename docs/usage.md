@@ -1,4 +1,4 @@
-# HTMLprinter Usage
+# 庄Sir的脚本打印器 Usage
 
 ## Start
 
@@ -22,6 +22,12 @@ Required:
 
 - `data.json`
 - `assets/` for local image files
+
+Optional and app-generated:
+
+- `layout.json`
+
+`data.json` is the immutable script-content snapshot. `layout.json` is created by the web app when the user adjusts the print layout for that session.
 
 Image paths in `data.json` are relative to the session folder, for example:
 
@@ -47,3 +53,10 @@ The app only changes layout:
 
 The app does not edit imported script content. Change content in the source system or regenerate the session JSON.
 
+Session-specific layout changes are saved in `imports/<session-id>/layout.json`, so reopening the same session restores the user's last print setup without changing `data.json`.
+
+## Agent Skill Layer
+
+Use `.agents/skills/zhuangsir-script-printer` when another agent or skill needs to prepare a print session for this app.
+
+For Feishu/Lark sources, fetch rows, cells, and image attachments with the native lark skills first. Then pass the fetched result into this printer skill. The printer skill only maps the source into the session JSON format and opens the app; it must not rewrite, summarize, correct, translate, or otherwise change the script content.

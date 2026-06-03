@@ -10,7 +10,7 @@ Production, creative, and AI workflow operators who need to turn structured shoo
 
 ## Product Purpose
 
-HTMLprinter renders imported script-table JSON into an A4 print preview. It lets users adjust layout presentation only: field order, printed labels, visibility, column widths, row height, orientation, and shared templates. It does not edit imported script content. Success means a user can load a session, tune the print layout quickly, and print or save a clean PDF without touching the source data.
+庄Sir的脚本打印器 renders imported script-table JSON into an A4 print preview. It lets users adjust layout presentation only: field order, printed labels, visibility, column widths, row height, orientation, and shared templates. It does not edit imported script content. Success means a user can load a session, tune the print layout quickly, and print or save a clean PDF without touching the source data.
 
 ## Brand Personality
 

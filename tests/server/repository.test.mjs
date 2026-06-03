@@ -24,6 +24,27 @@ test("lists sessions and loads session JSON", async () => {
   assert.deepEqual(await repo.loadSession("sample"), { title: "Sample Shoot", fields: [], rows: [] });
 });
 
+test("loads and saves session layout without changing session data", async () => {
+  const root = await makeRepoRoot();
+  await mkdir(path.join(root, "imports", "sample"), { recursive: true });
+  await writeFile(
+    path.join(root, "imports", "sample", "data.json"),
+    JSON.stringify({ title: "Sample Shoot", fields: [], rows: [] })
+  );
+  const repo = createRepository(root);
+  const layout = {
+    name: "本次排版",
+    paper: { size: "A4", orientation: "portrait" },
+    table: { rowHeight: 120, avoidRowPageBreak: true },
+    columns: []
+  };
+
+  assert.equal(await repo.loadSessionLayout("sample"), null);
+  assert.deepEqual(await repo.saveSessionLayout("sample", layout), { id: "sample", title: "本次排版" });
+  assert.deepEqual(await repo.loadSessionLayout("sample"), layout);
+  assert.deepEqual(await repo.loadSession("sample"), { title: "Sample Shoot", fields: [], rows: [] });
+});
+
 test("lists, loads, and saves templates under shot-script templates", async () => {
   const root = await makeRepoRoot();
   const repo = createRepository(root);
@@ -116,6 +137,8 @@ test("repository rejects template path traversal", async () => {
   await assert.rejects(() => repo.loadSession("../sample"), /非法 session 路径/);
   await assert.rejects(() => repo.loadSession("nested/sample"), /非法 session 路径/);
   await assert.rejects(() => repo.loadSession("nested\\sample"), /非法 session 路径/);
+  await assert.rejects(() => repo.loadSessionLayout("../sample"), /非法 session 路径/);
+  await assert.rejects(() => repo.saveSessionLayout("../sample", {}), /非法 session 路径/);
 });
 
 test("saveTemplate rejects an existing symlinked template file", async () => {

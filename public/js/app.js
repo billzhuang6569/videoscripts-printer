@@ -1,4 +1,12 @@
-import { listSessions, listTemplates, loadSession, loadTemplate, saveTemplate } from "./api.js";
+import {
+  listSessions,
+  listTemplates,
+  loadSession,
+  loadSessionLayout,
+  loadTemplate,
+  saveSessionLayout,
+  saveTemplate
+} from "./api.js";
 import { columnWidthValue, isDragContextActive, savedTemplateState, shouldApplyLoad } from "./app-helpers.js";
 import { MAX_COLUMN_WIDTH, MAX_ROW_HEIGHT, MIN_COLUMN_WIDTH, MIN_ROW_HEIGHT } from "./schema.js";
 import {
@@ -41,6 +49,7 @@ let state = null;
 let loadSequence = 0;
 let draggedFieldId = "";
 let fieldPointerDrag = null;
+let sessionLayoutSaveTimer = 0;
 
 function queryElements() {
   for (const [key, selector] of Object.entries(selectors)) {
@@ -87,6 +96,11 @@ function selectedTemplateId() {
   return els.templateSelect?.value || currentTemplateId;
 }
 
+function queryParam(name) {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get(name) ?? "";
+}
+
 function withLoadedSelection(nextState, sessionId, templateId) {
   return {
     ...nextState,
@@ -106,6 +120,7 @@ function setOrientation(orientation) {
   };
   updatePrintPageStyle();
   render();
+  scheduleSessionLayoutSave();
 }
 
 function createFieldRow(column, index) {
@@ -188,6 +203,15 @@ function render() {
   renderPreview();
 }
 
+function syncUrlSelection() {
+  if (typeof window === "undefined" || !currentSessionId) return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("session", currentSessionId);
+  if (currentTemplateId) url.searchParams.set("template", currentTemplateId);
+  window.history.replaceState({}, "", url);
+}
+
 function updatePrintPageStyle() {
   if (!state) return;
 
@@ -200,19 +224,27 @@ function updatePrintPageStyle() {
   style.textContent = `@media print { @page { size: A4 ${state.layout.paper.orientation}; margin: 10mm; } }`;
 }
 
-async function loadCurrentSelection(sessionId = selectedSessionId(), templateId = selectedTemplateId()) {
+async function loadCurrentSelection(sessionId = selectedSessionId(), templateId = selectedTemplateId(), options = {}) {
+  const preferSessionLayout = options.preferSessionLayout ?? true;
   const requestId = ++loadSequence;
   if (!sessionId || !templateId) return;
   setStatus("正在加载预览...");
 
   try {
-    const [session, template] = await Promise.all([loadSession(sessionId), loadTemplate(templateId)]);
+    const [session, template, savedLayout] = await Promise.all([
+      loadSession(sessionId),
+      loadTemplate(templateId),
+      loadSessionLayout(sessionId)
+    ]);
     if (!shouldApplyLoad(requestId, loadSequence)) return;
 
     currentSessionId = sessionId;
     currentTemplateId = templateId;
-    state = withLoadedSelection(createInitialState(session, template), sessionId, templateId);
+    const layoutSource = preferSessionLayout && savedLayout ? savedLayout : template;
+    state = withLoadedSelection(createInitialState(session, layoutSource), sessionId, templateId);
     render();
+    syncUrlSelection();
+    if (!preferSessionLayout) scheduleSessionLayoutSave();
     setStatus("预览已就绪", "success");
   } catch (error) {
     if (shouldApplyLoad(requestId, loadSequence)) handleError(error);
@@ -224,9 +256,21 @@ async function refreshLists() {
   els.sessionSelect.innerHTML = optionMarkup(sessions);
   els.templateSelect.innerHTML = optionMarkup(templates);
 
-  currentSessionId = currentSessionId && sessions.some((item) => item.id === currentSessionId) ? currentSessionId : sessions[0]?.id ?? "";
+  const requestedSessionId = queryParam("session");
+  const requestedTemplateId = queryParam("template");
+
+  currentSessionId =
+    requestedSessionId && sessions.some((item) => item.id === requestedSessionId)
+      ? requestedSessionId
+      : currentSessionId && sessions.some((item) => item.id === currentSessionId)
+        ? currentSessionId
+        : sessions[0]?.id ?? "";
   currentTemplateId =
-    currentTemplateId && templates.some((item) => item.id === currentTemplateId) ? currentTemplateId : templates[0]?.id ?? "";
+    requestedTemplateId && templates.some((item) => item.id === requestedTemplateId)
+      ? requestedTemplateId
+      : currentTemplateId && templates.some((item) => item.id === currentTemplateId)
+        ? currentTemplateId
+        : templates[0]?.id ?? "";
 
   els.sessionSelect.value = currentSessionId;
   els.templateSelect.value = currentTemplateId;
@@ -247,6 +291,19 @@ async function handleSaveTemplate() {
   await refreshLists();
   els.templateSelect.value = currentTemplateId;
   setStatus("模板已保存", "success");
+}
+
+function scheduleSessionLayoutSave() {
+  if (!state?.sessionId) return;
+
+  window.clearTimeout(sessionLayoutSaveTimer);
+  sessionLayoutSaveTimer = window.setTimeout(async () => {
+    try {
+      await saveSessionLayout(state.sessionId, toTemplate(state.layout, state.layout.name || state.session.title || "本次打印排版"));
+    } catch (error) {
+      handleError(error);
+    }
+  }, 360);
 }
 
 function syncColumnWidthControl(fieldId) {
@@ -340,6 +397,7 @@ function handleFieldPointerUp(event) {
   state = moveColumn(state, draggedFieldId, nextIndex);
   stopFieldPointerDrag();
   render();
+  scheduleSessionLayoutSave();
 }
 
 function handleFieldPointerCancel() {
@@ -372,6 +430,7 @@ function handleFieldKeyboardMove(event) {
 
   state = moveColumn(state, fieldId, nextIndexByKey[event.key]);
   render();
+  scheduleSessionLayoutSave();
   els.fieldList.querySelector(`[data-drag-field="${CSS.escape(fieldId)}"]`)?.focus();
 }
 
@@ -407,6 +466,7 @@ function handleResizePointerDown(event) {
     window.removeEventListener("pointerup", stopDrag);
     window.removeEventListener("pointercancel", stopDrag);
     renderFieldControls();
+    scheduleSessionLayoutSave();
   }
 
   window.addEventListener("pointermove", onMove);
@@ -420,7 +480,7 @@ function bindEvents() {
   });
 
   els.templateSelect.addEventListener("change", async (event) => {
-    await loadCurrentSelection(selectedSessionId(), event.target.value);
+    await loadCurrentSelection(selectedSessionId(), event.target.value, { preferSessionLayout: false });
   });
 
   document.querySelectorAll(selectors.orientationButton).forEach((button) => {
@@ -431,6 +491,7 @@ function bindEvents() {
     state = setRowHeight(state, Number(event.target.value));
     renderRowHeight();
     renderPreview();
+    scheduleSessionLayoutSave();
   });
 
   els.fieldList.addEventListener("input", (event) => {
@@ -439,11 +500,13 @@ function bindEvents() {
     if (labelFieldId) {
       state = renameColumn(state, labelFieldId, event.target.value);
       renderPreview();
+      scheduleSessionLayoutSave();
     }
     if (widthFieldId) {
       state = resizeColumn(state, widthFieldId, Number(event.target.value));
       renderPreview();
       syncColumnWidthControl(widthFieldId);
+      scheduleSessionLayoutSave();
     }
   });
 
@@ -452,6 +515,7 @@ function bindEvents() {
     if (!fieldId) return;
     state = toggleColumnVisible(state, fieldId);
     render();
+    scheduleSessionLayoutSave();
   });
 
   els.fieldList.addEventListener("pointerdown", handleFieldPointerDown);

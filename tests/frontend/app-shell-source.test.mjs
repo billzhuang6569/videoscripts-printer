@@ -21,10 +21,30 @@ test("app shell guards async selection loads against stale renders", async () =>
   assert.match(source, /currentTemplateId = templateId/);
 });
 
+test("app shell loads and autosaves per-session layout", async () => {
+  const source = await appSource();
+
+  assert.match(source, /loadSessionLayout\(sessionId\)/);
+  assert.match(source, /const layoutSource = preferSessionLayout && savedLayout \? savedLayout : template/);
+  assert.match(source, /function scheduleSessionLayoutSave\(\)/);
+  assert.match(source, /saveSessionLayout\(state\.sessionId, toTemplate\(state\.layout/);
+  assert.match(source, /scheduleSessionLayoutSave\(\)/);
+});
+
+test("app shell accepts session and template from URL query", async () => {
+  const source = await appSource();
+
+  assert.match(source, /new URLSearchParams\(window\.location\.search\)/);
+  assert.match(source, /queryParam\("session"\)/);
+  assert.match(source, /queryParam\("template"\)/);
+  assert.match(source, /url\.searchParams\.set\("session", currentSessionId\)/);
+});
+
 test("app shell renders asset routes with the loaded session id", async () => {
   const source = await appSource();
 
-  assert.match(source, /state = withLoadedSelection\(createInitialState\(session, template\), sessionId, templateId\)/);
+  assert.match(source, /const layoutSource = preferSessionLayout && savedLayout \? savedLayout : template/);
+  assert.match(source, /state = withLoadedSelection\(createInitialState\(session, layoutSource\), sessionId, templateId\)/);
   assert.match(source, /const sessionId = state\.sessionId \?\? currentSessionId/);
   assert.match(source, /renderPrintTable\(state\.session, state\.layout, sessionId\)/);
 });

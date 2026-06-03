@@ -2,7 +2,7 @@
 
 ## Overview
 
-HTMLprinter is a restrained local product UI for print preparation. The app chrome should stay quiet so the paper preview remains visually dominant.
+庄Sir的脚本打印器 is a restrained local product UI for print preparation. The app chrome should stay quiet so the paper preview remains visually dominant.
 
 ## Color
 
