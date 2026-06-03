@@ -102,6 +102,14 @@ test("image path safety allows safe double-dot filenames and rejects root escape
   const escapeSession = structuredClone(validSession);
   escapeSession.rows[0].cells.reference = [{ path: "assets/../../secret.png" }];
   assert.match(validateSessionData(escapeSession).errors[0], /必须是 session 内的相对路径/);
+
+  const windowsAbsoluteSession = structuredClone(validSession);
+  windowsAbsoluteSession.rows[0].cells.reference = [{ path: "C:\\secret.png" }];
+  assert.match(validateSessionData(windowsAbsoluteSession).errors[0], /必须是 session 内的相对路径/);
+
+  const windowsTraversalSession = structuredClone(validSession);
+  windowsTraversalSession.rows[0].cells.reference = [{ path: "assets\\..\\secret.png" }];
+  assert.match(validateSessionData(windowsTraversalSession).errors[0], /必须是 session 内的相对路径/);
 });
 
 test("image field only allows browser-displayable extensions", () => {

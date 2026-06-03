@@ -30,6 +30,7 @@ function normalizeAllowedExtensions(extensions) {
 
 function normalizeSafeRelativePath(value) {
   if (typeof value !== "string" || value.trim().length === 0) return null;
+  if (value.includes("\\") || /^[a-zA-Z]:/.test(value)) return null;
   if (path.posix.isAbsolute(value)) return null;
 
   const normalized = path.posix.normalize(value);
