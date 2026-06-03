@@ -11,11 +11,17 @@ function cloneLayout(layout) {
 }
 
 function updateColumn(state, fieldId, updater) {
-  if (!state.layout.columns.some((item) => item.fieldId === fieldId)) return state;
+  const currentColumn = state.layout.columns.find((item) => item.fieldId === fieldId);
+  if (!currentColumn) return state;
+  const nextColumn = { ...currentColumn };
+  updater(nextColumn);
+  if (Object.is(nextColumn.label, currentColumn.label) && Object.is(nextColumn.visible, currentColumn.visible) && Object.is(nextColumn.width, currentColumn.width)) {
+    return state;
+  }
 
   const layout = cloneLayout(state.layout);
   const column = layout.columns.find((item) => item.fieldId === fieldId);
-  updater(column);
+  Object.assign(column, nextColumn);
   return { ...state, layout };
 }
 
@@ -46,8 +52,11 @@ export function toggleColumnVisible(state, fieldId) {
 }
 
 export function setRowHeight(state, rowHeight) {
+  const nextRowHeight = clampRowHeight(rowHeight);
+  if (Object.is(state.layout.table.rowHeight, nextRowHeight)) return state;
+
   const layout = cloneLayout(state.layout);
-  layout.table.rowHeight = clampRowHeight(rowHeight);
+  layout.table.rowHeight = nextRowHeight;
   return { ...state, layout };
 }
 

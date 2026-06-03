@@ -139,8 +139,11 @@ test("column updates and same-position moves preserve state identity when they a
   const state = createInitialState({ fields, rows: [] }, template);
 
   assert.equal(renameColumn(state, "absent", "缺失"), state);
+  assert.equal(renameColumn(state, "shot_no", "镜头号"), state);
   assert.equal(resizeColumn(state, "absent", 320), state);
+  assert.equal(resizeColumn(state, "shot_no", 64), state);
   assert.equal(toggleColumnVisible(state, "absent"), state);
+  assert.equal(setRowHeight(state, 96), state);
   assert.equal(moveColumn(state, "absent", 1), state);
   assert.equal(moveColumn(state, "reference", 1), state);
   assert.equal(moveColumn(state, "shot_no", -10), state);
