@@ -2,6 +2,7 @@ import {
   DEFAULT_PAPER_ORIENTATION,
   DEFAULT_PAPER_SIZE,
   DEFAULT_ROW_HEIGHT,
+  FIELD_TYPES,
   MAX_COLUMN_WIDTH,
   MAX_ROW_HEIGHT,
   MIN_COLUMN_WIDTH,
@@ -29,6 +30,10 @@ export function clampRowHeight(rowHeight) {
 
 function defaultWidthForField(field) {
   return field.type === "image" ? 260 : 180;
+}
+
+function normalizeFieldType(type, fallback = "text") {
+  return FIELD_TYPES.includes(type) ? type : fallback;
 }
 
 function normalizePaper(paper = {}) {
@@ -66,7 +71,7 @@ export function applyTemplateToFields(fields, template = {}) {
     used.add(field.id);
     columns.push({
       fieldId: field.id,
-      type: field.type,
+      type: normalizeFieldType(templateColumn.type, field.type),
       label: typeof templateColumn.label === "string" && templateColumn.label.length > 0 ? templateColumn.label : field.name,
       visible: templateColumn.visible !== false,
       width: clampColumnWidth(templateColumn.width)

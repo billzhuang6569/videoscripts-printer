@@ -8,12 +8,13 @@ import {
   saveTemplate
 } from "./api.js";
 import { columnWidthValue, isDragContextActive, savedTemplateState, shouldApplyLoad } from "./app-helpers.js";
-import { MAX_COLUMN_WIDTH, MAX_ROW_HEIGHT, MIN_COLUMN_WIDTH, MIN_ROW_HEIGHT } from "./schema.js";
+import { FIELD_TYPES, MAX_COLUMN_WIDTH, MAX_ROW_HEIGHT, MIN_COLUMN_WIDTH, MIN_ROW_HEIGHT } from "./schema.js";
 import {
   createInitialState,
   moveColumn,
   renameColumn,
   resizeColumn,
+  setColumnType,
   setRowHeight,
   toTemplate,
   toggleColumnVisible
@@ -130,8 +131,11 @@ function setOrientation(orientation) {
 
 function createFieldRow(column, index) {
   const field = fieldById(column.fieldId);
-  const type = field?.type ?? column.type ?? "text";
   const visibilityLabel = column.label || field?.name || column.fieldId;
+  const typeOptions = FIELD_TYPES.map((fieldType) => {
+    const label = { text: "文本", multiSelect: "标签", image: "图片" }[fieldType] ?? fieldType;
+    return `<option value="${escapeAttr(fieldType)}"${column.type === fieldType ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
 
   return `
     <article class="field-row" data-field-row="${escapeAttr(column.fieldId)}">
@@ -148,7 +152,12 @@ function createFieldRow(column, index) {
           <input type="text" value="${escapeAttr(column.label)}" data-field-label="${escapeAttr(column.fieldId)}">
         </label>
         <div class="field-meta">
-          <span class="field-type">${escapeHtml(type)}</span>
+          <label class="field-type-field">
+            <span>类型</span>
+            <select class="field-type" data-field-type="${escapeAttr(column.fieldId)}" aria-label="字段类型：${escapeAttr(visibilityLabel)}">
+              ${typeOptions}
+            </select>
+          </label>
           <label class="width-slider">
             <span>宽度 <output data-field-width-output="${escapeAttr(column.fieldId)}">${escapeHtml(column.width)} px</output></span>
             <input type="range" min="${MIN_COLUMN_WIDTH}" max="${MAX_COLUMN_WIDTH}" step="4" value="${escapeAttr(column.width)}" data-field-width="${escapeAttr(column.fieldId)}">
@@ -548,10 +557,17 @@ function bindEvents() {
 
   els.fieldList.addEventListener("change", (event) => {
     const fieldId = event.target.dataset.fieldVisible;
-    if (!fieldId) return;
-    state = toggleColumnVisible(state, fieldId);
-    render();
-    scheduleSessionLayoutSave();
+    const typeFieldId = event.target.dataset.fieldType;
+    if (fieldId) {
+      state = toggleColumnVisible(state, fieldId);
+      render();
+      scheduleSessionLayoutSave();
+    }
+    if (typeFieldId) {
+      state = setColumnType(state, typeFieldId, event.target.value);
+      renderPreview();
+      scheduleSessionLayoutSave();
+    }
   });
 
   els.fieldList.addEventListener("pointerdown", handleFieldPointerDown);

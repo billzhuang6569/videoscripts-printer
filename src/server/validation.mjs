@@ -188,6 +188,9 @@ export function validateTemplate(template, options = {}) {
     if (typeof column.label !== "string" || column.label.length === 0) {
       errors.push(`第 ${index + 1} 列缺少 label`);
     }
+    if (column.type !== undefined && !FIELD_TYPES.includes(column.type)) {
+      errors.push(`第 ${index + 1} 列使用了不支持的字段类型：${column.type}`);
+    }
     if (typeof column.visible !== "boolean") errors.push(`第 ${index + 1} 列 visible 必须是布尔值`);
     if (!Number.isFinite(column.width) || column.width < MIN_COLUMN_WIDTH || column.width > MAX_COLUMN_WIDTH) {
       errors.push(`第 ${index + 1} 列宽度必须在 ${MIN_COLUMN_WIDTH} 到 ${MAX_COLUMN_WIDTH} 之间`);

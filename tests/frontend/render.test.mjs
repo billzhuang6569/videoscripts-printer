@@ -103,6 +103,23 @@ test("renderPrintTable includes header resize handles for visible columns", () =
   assert.doesNotMatch(html, /data-resize-field="hidden_notes"/);
 });
 
+test("renderPrintTable uses layout column type overrides", () => {
+  const layout = createLayout(fields, {
+    ...template,
+    columns: [{ fieldId: "voiceover", label: "旁白", type: "multiSelect", visible: true, width: 220 }]
+  });
+  const html = renderPrintTable(
+    {
+      ...session,
+      rows: [{ id: "row_001", cells: { voiceover: "口播标签" } }]
+    },
+    layout,
+    "sample-shoot"
+  );
+
+  assert.match(html, /class="cell-tag">口播标签<\/span>/);
+});
+
 test("render module stays browser-served and read-only in source", async () => {
   const source = await readFile(new URL("../../public/js/render.js", import.meta.url), "utf8");
 

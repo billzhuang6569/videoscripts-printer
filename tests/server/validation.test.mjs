@@ -135,6 +135,15 @@ test("valid template passes", () => {
   assert.deepEqual(validateTemplate(validTemplate).errors, []);
 });
 
+test("template column type is optional but validated when present", () => {
+  const typedTemplate = structuredClone(validTemplate);
+  typedTemplate.columns[0].type = "multiSelect";
+  assert.deepEqual(validateTemplate(typedTemplate).errors, []);
+
+  typedTemplate.columns[0].type = "number";
+  assert.match(validateTemplate(typedTemplate).errors[0], /不支持的字段类型：number/);
+});
+
 test("template supports portrait A4", () => {
   const template = structuredClone(validTemplate);
   template.paper.orientation = "portrait";

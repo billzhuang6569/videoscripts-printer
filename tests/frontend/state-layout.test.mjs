@@ -6,6 +6,7 @@ import {
   moveColumn,
   renameColumn,
   resizeColumn,
+  setColumnType,
   setRowHeight,
   toTemplate,
   toggleColumnVisible
@@ -49,10 +50,21 @@ test("applyTemplateToFields applies template columns and appends missing fields"
 
   assert.deepEqual(columns.map((column) => column.fieldId), ["shot_no", "reference", "voiceover", "notes"]);
   assert.equal(columns[1].label, "画面参考");
+  assert.equal(columns[1].type, "image");
   assert.equal(columns[1].visible, true);
   assert.equal(columns[1].width, 260);
   assert.equal(columns[2].label, "旁白");
   assert.equal(columns[2].visible, true);
+});
+
+test("applyTemplateToFields lets templates override field render type", () => {
+  const columns = applyTemplateToFields(fields, {
+    ...template,
+    columns: [{ fieldId: "voiceover", label: "旁白", type: "multiSelect", visible: true, width: 180 }]
+  });
+
+  assert.equal(columns[0].fieldId, "voiceover");
+  assert.equal(columns[0].type, "multiSelect");
 });
 
 test("public modules do not import from src-relative paths", async () => {
@@ -146,6 +158,8 @@ test("column updates and same-position moves preserve state identity when they a
 
   assert.equal(renameColumn(state, "absent", "缺失"), state);
   assert.equal(renameColumn(state, "shot_no", "镜头号"), state);
+  assert.equal(setColumnType(state, "absent", "multiSelect"), state);
+  assert.equal(setColumnType(state, "shot_no", "text"), state);
   assert.equal(resizeColumn(state, "absent", 320), state);
   assert.equal(resizeColumn(state, "shot_no", 64), state);
   assert.equal(toggleColumnVisible(state, "absent"), state);
@@ -157,7 +171,7 @@ test("column updates and same-position moves preserve state identity when they a
 
 test("toTemplate exports layout settings without session-only data", () => {
   const state = createInitialState({ fields, rows: [] }, template);
-  const updated = renameColumn(resizeColumn(state, "reference", 300), "reference", "分镜参考");
+  const updated = setColumnType(renameColumn(resizeColumn(state, "reference", 300), "reference", "分镜参考"), "notes", "multiSelect");
   const exported = toTemplate(updated.layout, "保存模板");
 
   assert.deepEqual(exported, {
@@ -165,10 +179,10 @@ test("toTemplate exports layout settings without session-only data", () => {
     paper: { size: "A4", orientation: "landscape" },
     table: { rowHeight: 96, avoidRowPageBreak: true },
     columns: [
-      { fieldId: "shot_no", label: "镜头号", visible: true, width: 64 },
-      { fieldId: "reference", label: "分镜参考", visible: true, width: 300 },
-      { fieldId: "voiceover", label: "旁白", visible: true, width: 180 },
-      { fieldId: "notes", label: "备注", visible: true, width: 180 }
+      { fieldId: "shot_no", label: "镜头号", type: "text", visible: true, width: 64 },
+      { fieldId: "reference", label: "分镜参考", type: "image", visible: true, width: 300 },
+      { fieldId: "voiceover", label: "旁白", type: "text", visible: true, width: 180 },
+      { fieldId: "notes", label: "备注", type: "multiSelect", visible: true, width: 180 }
     ]
   });
 });

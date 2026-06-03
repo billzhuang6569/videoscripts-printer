@@ -15,7 +15,12 @@ function updateColumn(state, fieldId, updater) {
   if (!currentColumn) return state;
   const nextColumn = { ...currentColumn };
   updater(nextColumn);
-  if (Object.is(nextColumn.label, currentColumn.label) && Object.is(nextColumn.visible, currentColumn.visible) && Object.is(nextColumn.width, currentColumn.width)) {
+  if (
+    Object.is(nextColumn.label, currentColumn.label) &&
+    Object.is(nextColumn.type, currentColumn.type) &&
+    Object.is(nextColumn.visible, currentColumn.visible) &&
+    Object.is(nextColumn.width, currentColumn.width)
+  ) {
     return state;
   }
 
@@ -36,6 +41,12 @@ export function createInitialState(session, template) {
 export function renameColumn(state, fieldId, label) {
   return updateColumn(state, fieldId, (column) => {
     column.label = label;
+  });
+}
+
+export function setColumnType(state, fieldId, type) {
+  return updateColumn(state, fieldId, (column) => {
+    column.type = type;
   });
 }
 
@@ -78,9 +89,10 @@ export function toTemplate(layout, name = layout.name) {
     name,
     paper: { ...layout.paper },
     table: { ...layout.table },
-    columns: layout.columns.map(({ fieldId, label, visible, width }) => ({
+    columns: layout.columns.map(({ fieldId, label, type, visible, width }) => ({
       fieldId,
       label,
+      type,
       visible,
       width
     }))

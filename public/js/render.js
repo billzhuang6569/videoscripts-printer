@@ -132,7 +132,7 @@ export function renderPrintTable(session, layout, sessionId) {
     .map((row) => {
       const cells = columns
         .map((column) => {
-          const type = fieldTypes.get(column.fieldId) ?? column.type ?? "text";
+          const type = column.type ?? fieldTypes.get(column.fieldId) ?? "text";
           const value = row.cells?.[column.fieldId];
           return `<td data-field="${escapeHtml(column.fieldId)}">${renderCellValue(type, value, sessionId)}</td>`;
         })

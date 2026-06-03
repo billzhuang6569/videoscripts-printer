@@ -121,7 +121,8 @@ button:disabled {
 
 .toolbar-field select,
 .field-label input,
-.field-meta input {
+.field-meta input,
+.field-meta select {
   height: var(--control-height);
   border: 1px solid var(--line-strong);
   border-radius: 6px;
@@ -138,6 +139,7 @@ button:disabled {
 .toolbar-field select:focus,
 .field-label input:focus,
 .field-meta input:focus,
+.field-meta select:focus,
 .range-field input:focus-visible,
 button:focus-visible {
   outline: 2px solid rgb(21 127 115 / 28%);
@@ -444,6 +446,13 @@ button:focus-visible {
 .field-meta label {
   display: grid;
   gap: 5px;
+}
+
+.field-type-field select {
+  width: 100%;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 680;
 }
 
 .width-slider {
