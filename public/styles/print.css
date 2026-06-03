@@ -49,6 +49,14 @@ body {
   font-size: 10pt;
 }
 
+.print-table thead {
+  display: table-header-group;
+}
+
+.print-table tfoot {
+  display: table-footer-group;
+}
+
 .print-table th,
 .print-table td {
   border: 0.5pt solid #9fa7a5;

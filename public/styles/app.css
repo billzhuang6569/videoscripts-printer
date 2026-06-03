@@ -470,6 +470,7 @@ button:focus-visible {
   width: 6px;
   height: 100%;
   cursor: col-resize;
+  touch-action: none;
 }
 
 .resize-handle::after {

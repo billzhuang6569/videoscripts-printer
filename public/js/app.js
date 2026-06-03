@@ -37,6 +37,7 @@ let templates = [];
 let currentSessionId = "";
 let currentTemplateId = "";
 let state = null;
+let loadSequence = 0;
 
 function queryElements() {
   for (const [key, selector] of Object.entries(selectors)) {
@@ -75,6 +76,22 @@ function fieldById(fieldId) {
   return state?.session?.fields?.find((field) => field.id === fieldId) ?? null;
 }
 
+function selectedSessionId() {
+  return els.sessionSelect?.value || currentSessionId;
+}
+
+function selectedTemplateId() {
+  return els.templateSelect?.value || currentTemplateId;
+}
+
+function withLoadedSelection(nextState, sessionId, templateId) {
+  return {
+    ...nextState,
+    sessionId,
+    templateId
+  };
+}
+
 function setOrientation(orientation) {
   if (!state || state.layout.paper.orientation === orientation) return;
   state = {
@@ -91,13 +108,14 @@ function setOrientation(orientation) {
 function createFieldRow(column, index) {
   const field = fieldById(column.fieldId);
   const type = field?.type ?? column.type ?? "text";
+  const visibilityLabel = column.label || field?.name || column.fieldId;
   const disabledUp = index === 0 ? " disabled" : "";
   const disabledDown = index === state.layout.columns.length - 1 ? " disabled" : "";
 
   return `
     <article class="field-row" data-field-row="${escapeAttr(column.fieldId)}">
       <label class="visibility-toggle" title="显示字段">
-        <input type="checkbox" data-field-visible="${escapeAttr(column.fieldId)}"${column.visible ? " checked" : ""}>
+        <input type="checkbox" aria-label="显示字段：${escapeAttr(visibilityLabel)}" data-field-visible="${escapeAttr(column.fieldId)}"${column.visible ? " checked" : ""}>
         <span aria-hidden="true"></span>
       </label>
       <div class="field-main">
@@ -146,9 +164,10 @@ function renderOrientationButtons() {
 function renderPreview() {
   els.paperSheet.dataset.orientation = state.layout.paper.orientation;
   document.documentElement.dataset.paperOrientation = state.layout.paper.orientation;
-  els.previewTitle.textContent = state.session.title ?? selectedTitle(sessions, currentSessionId);
+  const sessionId = state.sessionId ?? currentSessionId;
+  els.previewTitle.textContent = state.session.title ?? selectedTitle(sessions, sessionId);
   els.previewPaper.textContent = `${state.layout.paper.size} · ${state.layout.paper.orientation === "landscape" ? "横向" : "纵向"}`;
-  els.printSurface.innerHTML = renderPrintTable(state.session, state.layout, currentSessionId);
+  els.printSurface.innerHTML = renderPrintTable(state.session, state.layout, sessionId);
 }
 
 function renderRowHeight() {
@@ -181,13 +200,23 @@ function updatePrintPageStyle() {
   style.textContent = `@media print { @page { size: A4 ${state.layout.paper.orientation}; margin: 10mm; } }`;
 }
 
-async function loadCurrentSelection() {
-  if (!currentSessionId || !currentTemplateId) return;
+async function loadCurrentSelection(sessionId = selectedSessionId(), templateId = selectedTemplateId()) {
+  const requestId = ++loadSequence;
+  if (!sessionId || !templateId) return;
   setStatus("正在加载预览...");
-  const [session, template] = await Promise.all([loadSession(currentSessionId), loadTemplate(currentTemplateId)]);
-  state = createInitialState(session, template);
-  render();
-  setStatus("预览已就绪", "success");
+
+  try {
+    const [session, template] = await Promise.all([loadSession(sessionId), loadTemplate(templateId)]);
+    if (requestId !== loadSequence) return;
+
+    currentSessionId = sessionId;
+    currentTemplateId = templateId;
+    state = withLoadedSelection(createInitialState(session, template), sessionId, templateId);
+    render();
+    setStatus("预览已就绪", "success");
+  } catch (error) {
+    if (requestId === loadSequence) handleError(error);
+  }
 }
 
 async function refreshLists() {
@@ -209,24 +238,70 @@ async function handleSaveTemplate() {
   const currentName = state.layout.name || selectedTitle(templates, currentTemplateId) || "未命名模板";
   const name = window.prompt("保存模板名称", currentName);
   if (!name || name.trim().length === 0) return;
+  const trimmedName = name.trim();
 
   setStatus("正在保存模板...");
-  const saved = await saveTemplate(toTemplate(state.layout, name.trim()));
+  const saved = await saveTemplate(toTemplate(state.layout, trimmedName));
   currentTemplateId = saved.id;
+  state = {
+    ...state,
+    templateId: saved.id,
+    layout: {
+      ...state.layout,
+      name: saved.title || trimmedName
+    }
+  };
   await refreshLists();
   els.templateSelect.value = currentTemplateId;
   setStatus("模板已保存", "success");
 }
 
+function syncColumnWidthControl(fieldId) {
+  const column = state?.layout.columns.find((item) => item.fieldId === fieldId);
+  const input = [...(els.fieldList?.querySelectorAll("[data-field-width]") ?? [])].find(
+    (item) => item.dataset.fieldWidth === fieldId
+  );
+  if (column && input) input.value = String(column.width);
+}
+
+function handleResizePointerDown(event) {
+  const handle = event.target.closest("[data-resize-field]");
+  if (!state || !handle) return;
+
+  const fieldId = handle.dataset.resizeField;
+  const column = state.layout.columns.find((item) => item.fieldId === fieldId);
+  if (!column) return;
+
+  event.preventDefault();
+  const startX = event.clientX;
+  const startWidth = Number(column.width);
+  const startingWidth = Number.isFinite(startWidth) ? startWidth : MIN_COLUMN_WIDTH;
+
+  function onMove(moveEvent) {
+    state = resizeColumn(state, fieldId, startingWidth + moveEvent.clientX - startX);
+    renderPreview();
+    syncColumnWidthControl(fieldId);
+  }
+
+  function stopDrag() {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", stopDrag);
+    window.removeEventListener("pointercancel", stopDrag);
+    renderFieldControls();
+  }
+
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", stopDrag);
+  window.addEventListener("pointercancel", stopDrag);
+}
+
 function bindEvents() {
   els.sessionSelect.addEventListener("change", async (event) => {
-    currentSessionId = event.target.value;
-    await loadCurrentSelection().catch(handleError);
+    await loadCurrentSelection(event.target.value, selectedTemplateId());
   });
 
   els.templateSelect.addEventListener("change", async (event) => {
-    currentTemplateId = event.target.value;
-    await loadCurrentSelection().catch(handleError);
+    await loadCurrentSelection(selectedSessionId(), event.target.value);
   });
 
   document.querySelectorAll(selectors.orientationButton).forEach((button) => {
@@ -271,6 +346,8 @@ function bindEvents() {
   els.saveTemplate.addEventListener("click", () => {
     handleSaveTemplate().catch(handleError);
   });
+
+  els.printSurface.addEventListener("pointerdown", handleResizePointerDown);
 
   els.print.addEventListener("click", () => window.print());
 }

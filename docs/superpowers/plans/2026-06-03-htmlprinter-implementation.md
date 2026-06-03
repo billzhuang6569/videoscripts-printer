@@ -1306,6 +1306,7 @@ Expected: commit succeeds.
 - Create: `public/js/app.js`
 - Create: `public/styles/app.css`
 - Create: `public/styles/print.css`
+- Create or modify: `tests/frontend/*.test.mjs` for app-shell source sanity, resize wiring, accessible visibility labels, stale-load guards, and print CSS header/footer repetition checks.
 
 - [ ] **Step 1: Create API client**
 
@@ -1772,6 +1773,16 @@ elements.printButton.addEventListener("click", () => window.print());
 
 boot();
 ```
+
+- [ ] **Step 5.5: Add Task 7 frontend hardening tests**
+
+Add focused frontend tests under `tests/frontend/` for these browser-shell quality gates:
+
+- Visibility checkbox accessible names include the target field label.
+- Async session/template loading is guarded so stale responses cannot update state or render.
+- Preview asset rendering uses the loaded session id, not a later global selection.
+- Preview resize handles are bound to pointer dragging and sync the layout panel width input.
+- Print CSS declares `.print-table thead { display: table-header-group; }` and `.print-table tfoot { display: table-footer-group; }`.
 
 - [ ] **Step 6: Run all tests**
 
