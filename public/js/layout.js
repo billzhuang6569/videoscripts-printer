@@ -2,6 +2,7 @@ import {
   DEFAULT_PAPER_ORIENTATION,
   DEFAULT_PAPER_SIZE,
   DEFAULT_ROW_HEIGHT,
+  DEFAULT_ROW_HEIGHT_MODE,
   DEFAULT_SORT_DIRECTION,
   FIELD_TYPES,
   MAX_COLUMN_WIDTH,
@@ -10,6 +11,7 @@ import {
   MIN_ROW_HEIGHT,
   PAPER_ORIENTATIONS,
   PAPER_SIZES,
+  ROW_HEIGHT_MODES,
   SORT_DIRECTIONS
 } from "./schema.js";
 
@@ -125,6 +127,7 @@ export function createLayout(fields, template = {}) {
     paper: normalizePaper(template.paper),
     table: {
       ...table,
+      rowHeightMode: ROW_HEIGHT_MODES.includes(table.rowHeightMode) ? table.rowHeightMode : DEFAULT_ROW_HEIGHT_MODE,
       rowHeight: clampRowHeight(table.rowHeight ?? DEFAULT_ROW_HEIGHT),
       avoidRowPageBreak: table.avoidRowPageBreak !== false
     },

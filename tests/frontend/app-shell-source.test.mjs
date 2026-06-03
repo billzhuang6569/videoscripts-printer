@@ -124,3 +124,22 @@ test("app shell supports grouping and sorting controls", async () => {
   assert.match(source, /state = setSortDirection\(state, button\.dataset\.sortDirectionButton\)/);
   assert.match(source, /renderOrganizationControls\(\)/);
 });
+
+test("app shell supports auto row height mode", async () => {
+  const source = await appSource();
+
+  assert.match(source, /data-row-height-mode-button/);
+  assert.match(source, /state = setRowHeightMode\(state, button\.dataset\.rowHeightModeButton\)/);
+  assert.match(source, /rowHeightMode === "auto"/);
+});
+
+test("app shell supports editable cells and tag options", async () => {
+  const source = await appSource();
+
+  assert.match(source, /saveSessionData\(state\.sessionId, state\.session\)/);
+  assert.match(source, /function openCellEditor\(cell\)/);
+  assert.match(source, /td\[data-row-id\]\[data-field\]/);
+  assert.match(source, /function renderTagOptions\(\)/);
+  assert.match(source, /data-tag-create/);
+  assert.match(source, /state = updateCellValue\(state, rowId, fieldId, valueFromCellEditor\(\)\)/);
+});

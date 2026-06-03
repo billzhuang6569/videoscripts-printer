@@ -88,6 +88,30 @@ test("server loads validated session and rejects missing or invalid sessions", a
   assert.match(invalidBody.errors[0], /图片不存在/);
 });
 
+test("server saves validated session content", async (t) => {
+  const base = await withServer(t);
+  const loaded = await fetch(`${base}/api/sessions/sample`).then((res) => res.json());
+  loaded.rows[0].cells.shot_no = "02";
+
+  const saved = await fetch(`${base}/api/sessions/sample`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(loaded)
+  });
+  const savedBody = await saved.json();
+  const reloaded = await fetch(`${base}/api/sessions/sample`).then((res) => res.json());
+  const invalid = await fetch(`${base}/api/sessions/sample`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...loaded, rows: [{ id: "r1", cells: { shot_no: ["bad"] } }] })
+  });
+
+  assert.equal(saved.status, 200);
+  assert.equal(savedBody.id, "sample");
+  assert.equal(reloaded.rows[0].cells.shot_no, "02");
+  assert.equal(invalid.status, 422);
+});
+
 test("server loads and saves validated templates", async (t) => {
   const base = await withServer(t);
 

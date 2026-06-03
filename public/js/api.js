@@ -19,6 +19,16 @@ export async function loadSession(sessionId) {
   return readJsonResponse(await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`));
 }
 
+export async function saveSessionData(sessionId, data) {
+  return readJsonResponse(
+    await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+      method: "PUT",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(data)
+    })
+  );
+}
+
 export async function loadSessionLayout(sessionId) {
   return readJsonResponse(await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/layout`));
 }

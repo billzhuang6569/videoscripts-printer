@@ -219,11 +219,21 @@ export function createAppServer({ rootDir = DEFAULT_ROOT, publicDir = DEFAULT_PU
       }
 
       if (url.pathname.startsWith("/api/sessions/")) {
-        if (req.method !== "GET") return methodNotAllowed(res, ["GET"]);
         const sessionId = decodeURIComponent(url.pathname.slice("/api/sessions/".length));
-        const data = await repo.loadSession(sessionId);
-        await validateLoadedSession(repo, sessionId, data);
-        return sendJson(res, 200, data);
+        if (req.method === "GET") {
+          const data = await repo.loadSession(sessionId);
+          await validateLoadedSession(repo, sessionId, data);
+          return sendJson(res, 200, data);
+        }
+
+        if (req.method === "PUT") {
+          const data = await readJsonBody(req);
+          await repo.loadSession(sessionId);
+          await validateLoadedSession(repo, sessionId, data);
+          return sendJson(res, 200, await repo.saveSession(sessionId, data));
+        }
+
+        return methodNotAllowed(res, ["GET", "PUT"]);
       }
 
       if (url.pathname === "/api/templates") {

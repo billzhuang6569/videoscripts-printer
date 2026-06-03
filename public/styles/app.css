@@ -274,9 +274,18 @@ button:focus-visible {
   width: 100%;
 }
 
+.row-height-mode-control {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .range-field input {
   width: 100%;
   accent-color: var(--accent);
+}
+
+.range-field input:disabled {
+  opacity: 0.35;
 }
 
 .warning-section {
@@ -580,6 +589,15 @@ button:focus-visible {
   background: #fff;
 }
 
+.editable-cell {
+  cursor: text;
+}
+
+.editable-cell:hover {
+  background: #fbfefd;
+  box-shadow: inset 0 0 0 2px rgb(21 127 115 / 18%);
+}
+
 .print-group-row th {
   border-color: #bdccc9;
   padding: 7px 9px;
@@ -609,8 +627,47 @@ button:focus-visible {
 }
 
 .print-header-label,
-.cell-text {
+.cell-text,
+.cell-markdown {
   overflow-wrap: anywhere;
+}
+
+.cell-markdown {
+  display: grid;
+  gap: 4px;
+}
+
+.cell-markdown p,
+.cell-markdown ul,
+.cell-markdown h3,
+.cell-markdown h4,
+.cell-markdown h5 {
+  margin: 0;
+}
+
+.cell-markdown ul {
+  display: grid;
+  gap: 4px;
+  padding-left: 15px;
+}
+
+.cell-markdown .cell-todo-item {
+  list-style: none;
+  margin-left: -15px;
+}
+
+.cell-markdown code {
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: #eef3f2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.cell-markdown a {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .resize-handle {
@@ -785,6 +842,173 @@ button:focus-visible {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.cell-editor {
+  position: fixed;
+  z-index: 30;
+  width: min(340px, calc(100vw - 24px));
+  color: var(--text);
+}
+
+.cell-editor[hidden] {
+  display: none;
+}
+
+.cell-editor-panel {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--chrome-strong);
+  box-shadow: 0 18px 54px rgb(20 35 33 / 24%);
+}
+
+.cell-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: #34403e;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.cell-editor-heading button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.cell-editor-heading button:hover {
+  background: #edf3f2;
+  color: var(--text);
+}
+
+.cell-text-editor {
+  padding: 10px 12px 0;
+}
+
+.cell-text-editor textarea {
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  max-height: 280px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fbfdfc;
+  color: var(--text);
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC", monospace;
+  outline: none;
+}
+
+.cell-text-editor textarea:focus,
+.cell-tag-editor input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgb(21 127 115 / 14%);
+}
+
+.cell-tag-editor {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+.cell-text-editor[hidden],
+.cell-tag-editor[hidden] {
+  display: none;
+}
+
+.tag-editor-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.tag-editor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #2ebfac;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.tag-editor-pill span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tag-editor-empty {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 28px;
+}
+
+.cell-tag-editor input {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.tag-editor-options {
+  display: grid;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px;
+  background: #fbfdfc;
+}
+
+.tag-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+}
+
+.tag-option:hover,
+.tag-option.is-selected {
+  background: #edf3f2;
+}
+
+.tag-option-create {
+  justify-content: flex-start;
+}
+
+.cell-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px;
 }
 
 .print-image-list {

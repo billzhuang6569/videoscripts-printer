@@ -7,6 +7,7 @@ import {
   MIN_ROW_HEIGHT,
   PAPER_ORIENTATIONS,
   PAPER_SIZES,
+  ROW_HEIGHT_MODES,
   SORT_DIRECTIONS
 } from "../shared/schema.mjs";
 
@@ -170,6 +171,9 @@ export function validateTemplate(template, options = {}) {
     template.table.rowHeight > MAX_ROW_HEIGHT
   ) {
     errors.push(`行高必须在 ${MIN_ROW_HEIGHT} 到 ${MAX_ROW_HEIGHT} 之间`);
+  }
+  if (template.table.rowHeightMode !== undefined && !ROW_HEIGHT_MODES.includes(template.table.rowHeightMode)) {
+    errors.push(`行高模式必须是 ${ROW_HEIGHT_MODES.join(" 或 ")}`);
   }
 
   const seen = new Set();

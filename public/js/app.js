@@ -4,6 +4,7 @@ import {
   loadSession,
   loadSessionLayout,
   loadTemplate,
+  saveSessionData,
   saveSessionLayout,
   saveTemplate
 } from "./api.js";
@@ -17,15 +18,25 @@ import {
   setColumnType,
   setGroupByField,
   setRowHeight,
+  setRowHeightMode,
   setSortByField,
   setSortDirection,
   toTemplate,
-  toggleColumnVisible
+  toggleColumnVisible,
+  updateCellValue
 } from "./state.js";
 import { renderPrintTable } from "./render.js";
 
 const selectors = {
   appShell: "[data-app-shell]",
+  cellEditor: "[data-cell-editor]",
+  cellEditorCancel: "[data-cell-editor-cancel]",
+  cellEditorClose: "[data-cell-editor-close]",
+  cellEditorSave: "[data-cell-editor-save]",
+  cellEditorTextarea: "[data-cell-editor-textarea]",
+  cellEditorTitle: "[data-cell-editor-title]",
+  cellTagEditor: "[data-cell-tag-editor]",
+  cellTextEditor: "[data-cell-text-editor]",
   fieldCount: "[data-field-count]",
   fieldList: "[data-field-list]",
   groupField: "[data-group-field]",
@@ -37,6 +48,7 @@ const selectors = {
   previewTitle: "[data-preview-title]",
   print: "[data-print]",
   printSurface: "[data-print-surface]",
+  rowHeightModeButton: "[data-row-height-mode-button]",
   rowHeightOutput: "[data-row-height-output]",
   rowHeightSlider: "[data-row-height-slider]",
   saveTemplate: "[data-save-template]",
@@ -48,7 +60,10 @@ const selectors = {
   templateConfirm: "[data-template-confirm]",
   templateDialog: "[data-template-dialog]",
   templateNameInput: "[data-template-name-input]",
-  templateSelect: "[data-template-select]"
+  templateSelect: "[data-template-select]",
+  tagEditorOptions: "[data-tag-editor-options]",
+  tagEditorSearch: "[data-tag-editor-search]",
+  tagEditorSelected: "[data-tag-editor-selected]"
 };
 
 const els = {};
@@ -60,7 +75,9 @@ let state = null;
 let loadSequence = 0;
 let draggedFieldId = "";
 let fieldPointerDrag = null;
+let cellEditorState = null;
 let sessionLayoutSaveTimer = 0;
+let sessionDataSaveTimer = 0;
 let templateNameResolver = null;
 
 function queryElements() {
@@ -102,6 +119,62 @@ function fieldById(fieldId) {
 
 function columnTitle(column) {
   return column.label || fieldById(column.fieldId)?.name || column.fieldId;
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return value;
+  if (value == null || value === "") return [];
+  return [value];
+}
+
+function normalizeTagList(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item)).filter((item) => item.length > 0);
+  if (value == null || value === "") return [];
+  return String(value)
+    .split(/\s*\/\s*/u)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+}
+
+function rowById(rowId) {
+  return state?.session?.rows?.find((row) => row.id === rowId) ?? null;
+}
+
+function columnByFieldId(fieldId) {
+  return state?.layout?.columns?.find((column) => column.fieldId === fieldId) ?? null;
+}
+
+function cellType(fieldId) {
+  return columnByFieldId(fieldId)?.type ?? fieldById(fieldId)?.type ?? "text";
+}
+
+function cellValue(rowId, fieldId) {
+  return rowById(rowId)?.cells?.[fieldId];
+}
+
+function textEditorValue(type, value) {
+  if (type === "image") {
+    return normalizeList(value)
+      .map((image) => (image && typeof image === "object" ? image.caption ?? "" : ""))
+      .join("\n");
+  }
+  if (Array.isArray(value)) return value.join("\n");
+  return String(value ?? "");
+}
+
+function tagOptionsForField(fieldId) {
+  const options = new Set();
+  for (const row of state?.session?.rows ?? []) {
+    normalizeTagList(row.cells?.[fieldId]).forEach((tag) => {
+      const value = String(tag ?? "").trim();
+      if (value.length > 0) options.add(value);
+    });
+  }
+  return [...options].sort((a, b) => a.localeCompare(b, "zh-CN"));
+}
+
+function selectedTags() {
+  return cellEditorState?.tags ?? [];
 }
 
 function selectedSessionId() {
@@ -237,10 +310,17 @@ function renderPreview() {
 
 function renderRowHeight() {
   const rowHeight = state.layout.table.rowHeight;
+  const rowHeightMode = state.layout.table.rowHeightMode ?? "fixed";
   els.rowHeightSlider.min = String(MIN_ROW_HEIGHT);
   els.rowHeightSlider.max = String(MAX_ROW_HEIGHT);
   els.rowHeightSlider.value = String(rowHeight);
-  els.rowHeightOutput.value = `${rowHeight} px`;
+  els.rowHeightSlider.disabled = rowHeightMode === "auto";
+  els.rowHeightOutput.value = rowHeightMode === "auto" ? "自动" : `${rowHeight} px`;
+  document.querySelectorAll(selectors.rowHeightModeButton).forEach((button) => {
+    const selected = button.dataset.rowHeightModeButton === rowHeightMode;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
 }
 
 function render() {
@@ -388,6 +468,20 @@ function scheduleSessionLayoutSave() {
   }, 360);
 }
 
+function scheduleSessionDataSave() {
+  if (!state?.sessionId) return;
+
+  window.clearTimeout(sessionDataSaveTimer);
+  sessionDataSaveTimer = window.setTimeout(async () => {
+    try {
+      await saveSessionData(state.sessionId, state.session);
+      setStatus("内容已保存", "success");
+    } catch (error) {
+      handleError(error);
+    }
+  }, 420);
+}
+
 function syncColumnWidthControl(fieldId) {
   const column = state?.layout.columns.find((item) => item.fieldId === fieldId);
   const input = [...(els.fieldList?.querySelectorAll("[data-field-width]") ?? [])].find(
@@ -398,6 +492,143 @@ function syncColumnWidthControl(fieldId) {
   );
   if (column && input) input.value = columnWidthValue(state, fieldId);
   if (column && output) output.textContent = `${columnWidthValue(state, fieldId)} px`;
+}
+
+function positionCellEditor(anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const editorWidth = 340;
+  const editorHeight = els.cellEditor.getBoundingClientRect().height || 260;
+  const left = Math.min(window.innerWidth - editorWidth - 12, Math.max(12, rect.left));
+  const preferredTop = rect.bottom + 8;
+  const top = Math.min(window.innerHeight - editorHeight - 12, Math.max(12, preferredTop));
+
+  els.cellEditor.style.left = `${left}px`;
+  els.cellEditor.style.top = `${Math.max(12, top)}px`;
+}
+
+function renderSelectedTags() {
+  const tags = selectedTags();
+  els.tagEditorSelected.innerHTML =
+    tags.length === 0
+      ? `<span class="tag-editor-empty">未选择</span>`
+      : tags
+          .map(
+            (tag) =>
+              `<button type="button" class="tag-editor-pill" data-tag-remove="${escapeAttr(tag)}">${escapeHtml(tag)}<span aria-hidden="true">×</span></button>`
+          )
+          .join("");
+}
+
+function renderTagOptions() {
+  if (!cellEditorState) return;
+  const query = els.tagEditorSearch.value.trim();
+  const selected = new Set(selectedTags());
+  const allOptions = tagOptionsForField(cellEditorState.fieldId);
+  const visibleOptions = allOptions.filter((tag) => !query || tag.toLowerCase().includes(query.toLowerCase()));
+  const canCreate = query.length > 0 && !allOptions.some((tag) => tag.toLowerCase() === query.toLowerCase());
+
+  const optionMarkup = visibleOptions
+    .map((tag) => {
+      const isSelected = selected.has(tag);
+      return `<button type="button" class="tag-option${isSelected ? " is-selected" : ""}" data-tag-option="${escapeAttr(tag)}"><span class="cell-tag">${escapeHtml(tag)}</span>${isSelected ? "<span>已选</span>" : ""}</button>`;
+    })
+    .join("");
+  const createMarkup = canCreate
+    ? `<button type="button" class="tag-option tag-option-create" data-tag-create="${escapeAttr(query)}">创建 <span class="cell-tag">${escapeHtml(query)}</span></button>`
+    : "";
+
+  els.tagEditorOptions.innerHTML = `${optionMarkup}${createMarkup}` || `<div class="tag-editor-empty">没有匹配选项</div>`;
+}
+
+function renderTagEditor() {
+  renderSelectedTags();
+  renderTagOptions();
+}
+
+function toggleEditorTag(tag) {
+  if (!cellEditorState) return;
+  const value = String(tag ?? "").trim();
+  if (value.length === 0) return;
+
+  const tags = selectedTags();
+  cellEditorState.tags = tags.includes(value) ? tags.filter((item) => item !== value) : [...tags, value];
+  renderTagEditor();
+}
+
+function removeEditorTag(tag) {
+  if (!cellEditorState) return;
+  cellEditorState.tags = selectedTags().filter((item) => item !== tag);
+  renderTagEditor();
+}
+
+function openCellEditor(cell) {
+  if (!state || !cell) return;
+
+  const rowId = cell.dataset.rowId;
+  const fieldId = cell.dataset.field;
+  const type = cellType(fieldId);
+  const value = cellValue(rowId, fieldId);
+  const column = columnByFieldId(fieldId);
+
+  if (type === "image" && normalizeList(value).length === 0) {
+    setStatus("图片字段当前没有可编辑附件", "neutral");
+    return;
+  }
+
+  cellEditorState = {
+    rowId,
+    fieldId,
+    type,
+    tags: type === "multiSelect" ? normalizeTagList(value) : []
+  };
+
+  els.cellEditorTitle.textContent = columnTitle(column ?? { fieldId });
+  els.cellEditor.hidden = false;
+  els.cellTextEditor.hidden = type === "multiSelect";
+  els.cellTagEditor.hidden = type !== "multiSelect";
+
+  if (type === "multiSelect") {
+    els.tagEditorSearch.value = "";
+    renderTagEditor();
+    window.setTimeout(() => els.tagEditorSearch.focus(), 0);
+  } else {
+    els.cellEditorTextarea.value = textEditorValue(type, value);
+    els.cellEditorTextarea.placeholder = type === "image" ? "每行对应一张图片的说明文字，支持 Markdown" : "支持 Markdown";
+    window.setTimeout(() => {
+      els.cellEditorTextarea.focus();
+      els.cellEditorTextarea.select();
+    }, 0);
+  }
+
+  positionCellEditor(cell);
+}
+
+function closeCellEditor() {
+  cellEditorState = null;
+  els.cellEditor.hidden = true;
+}
+
+function valueFromCellEditor() {
+  const { rowId, fieldId, type } = cellEditorState;
+  if (type === "multiSelect") {
+    return fieldById(fieldId)?.type === "multiSelect" ? selectedTags() : selectedTags().join(" / ");
+  }
+  if (type === "image") {
+    const captions = els.cellEditorTextarea.value.split(/\r?\n/u);
+    return normalizeList(cellValue(rowId, fieldId)).map((image, index) =>
+      image && typeof image === "object" ? { ...image, caption: captions[index] ?? "" } : image
+    );
+  }
+  return els.cellEditorTextarea.value;
+}
+
+function saveCellEditor() {
+  if (!state || !cellEditorState) return;
+  const { rowId, fieldId } = cellEditorState;
+  state = updateCellValue(state, rowId, fieldId, valueFromCellEditor());
+  closeCellEditor();
+  renderPreview();
+  scheduleSessionDataSave();
 }
 
 function clearDropMarkers() {
@@ -576,6 +807,15 @@ function bindEvents() {
     scheduleSessionLayoutSave();
   });
 
+  document.querySelectorAll(selectors.rowHeightModeButton).forEach((button) => {
+    button.addEventListener("click", () => {
+      state = setRowHeightMode(state, button.dataset.rowHeightModeButton);
+      renderRowHeight();
+      renderPreview();
+      scheduleSessionLayoutSave();
+    });
+  });
+
   els.groupField.addEventListener("change", (event) => {
     state = setGroupByField(state, event.target.value);
     renderPreview();
@@ -661,6 +901,55 @@ function bindEvents() {
   });
 
   els.printSurface.addEventListener("pointerdown", handleResizePointerDown);
+
+  els.printSurface.addEventListener("click", (event) => {
+    if (event.target.closest("[data-resize-field]")) return;
+    const cell = event.target.closest("td[data-row-id][data-field]");
+    if (!cell) return;
+    openCellEditor(cell);
+  });
+
+  els.cellEditorSave.addEventListener("click", saveCellEditor);
+  els.cellEditorCancel.addEventListener("click", closeCellEditor);
+  els.cellEditorClose.addEventListener("click", closeCellEditor);
+
+  els.cellEditorTextarea.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      saveCellEditor();
+    }
+    if (event.key === "Escape") closeCellEditor();
+  });
+
+  els.tagEditorSearch.addEventListener("input", renderTagOptions);
+  els.tagEditorSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      toggleEditorTag(els.tagEditorSearch.value);
+      els.tagEditorSearch.value = "";
+      renderTagEditor();
+    }
+    if (event.key === "Escape") closeCellEditor();
+  });
+
+  els.tagEditorSelected.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-tag-remove]");
+    if (removeButton) removeEditorTag(removeButton.dataset.tagRemove);
+  });
+
+  els.tagEditorOptions.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-tag-option], [data-tag-create]");
+    if (!option) return;
+    toggleEditorTag(option.dataset.tagOption ?? option.dataset.tagCreate);
+    if (option.dataset.tagCreate) els.tagEditorSearch.value = "";
+    renderTagEditor();
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (els.cellEditor.hidden) return;
+    if (event.target.closest("[data-cell-editor]") || event.target.closest("td[data-row-id][data-field]")) return;
+    closeCellEditor();
+  });
 
   els.print.addEventListener("click", () => window.print());
 }

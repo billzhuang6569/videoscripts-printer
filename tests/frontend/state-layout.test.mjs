@@ -9,10 +9,12 @@ import {
   setColumnType,
   setGroupByField,
   setRowHeight,
+  setRowHeightMode,
   setSortByField,
   setSortDirection,
   toTemplate,
-  toggleColumnVisible
+  toggleColumnVisible,
+  updateCellValue
 } from "../../public/js/state.js";
 import { applyTemplateToFields, createLayout, visibleColumns } from "../../public/js/layout.js";
 import {
@@ -115,6 +117,14 @@ test("createLayout normalizes organization settings", () => {
   });
 });
 
+test("createLayout normalizes row height mode", () => {
+  const auto = createLayout(fields, { ...template, table: { ...template.table, rowHeightMode: "auto" } });
+  const invalid = createLayout(fields, { ...template, table: { ...template.table, rowHeightMode: "stretch" } });
+
+  assert.equal(auto.table.rowHeightMode, "auto");
+  assert.equal(invalid.table.rowHeightMode, "fixed");
+});
+
 test("applyTemplateToFields clamps template widths", () => {
   const columns = applyTemplateToFields(fields, {
     ...template,
@@ -159,7 +169,9 @@ test("state changes return new layout objects without mutating session data", ()
   const resized = resizeColumn(renamed, "reference", 320);
   const hidden = toggleColumnVisible(resized, "voiceover");
   const rowHeightChanged = setRowHeight(hidden, MAX_ROW_HEIGHT + 40);
-  const grouped = setGroupByField(rowHeightChanged, "reference");
+  const autoHeight = setRowHeightMode(rowHeightChanged, "auto");
+  const edited = updateCellValue(autoHeight, "r1", "voiceover", "**新旁白**");
+  const grouped = setGroupByField(edited, "reference");
   const sorted = setSortDirection(setSortByField(grouped, "shot_no"), "desc");
   const moved = moveColumn(sorted, "notes", 1);
 
@@ -169,6 +181,7 @@ test("state changes return new layout objects without mutating session data", ()
   assert.notEqual(resized.layout, renamed.layout);
   assert.deepEqual(session.fields, originalFields);
   assert.deepEqual(session.rows, originalRows);
+  assert.equal(moved.session.rows[0].cells.voiceover, "**新旁白**");
   assert.deepEqual(moved.layout.organization, {
     groupByFieldId: "reference",
     sortByFieldId: "shot_no",
@@ -178,6 +191,7 @@ test("state changes return new layout objects without mutating session data", ()
   assert.equal(moved.layout.columns.find((column) => column.fieldId === "reference").width, 320);
   assert.equal(visibleColumns(moved.layout).some((column) => column.fieldId === "voiceover"), false);
   assert.equal(moved.layout.table.rowHeight, MAX_ROW_HEIGHT);
+  assert.equal(moved.layout.table.rowHeightMode, "auto");
   assert.deepEqual(moved.layout.columns.map((column) => column.fieldId), ["shot_no", "notes", "reference", "voiceover"]);
 });
 
@@ -201,6 +215,9 @@ test("column updates and same-position moves preserve state identity when they a
   assert.equal(resizeColumn(state, "shot_no", 64), state);
   assert.equal(toggleColumnVisible(state, "absent"), state);
   assert.equal(setRowHeight(state, 96), state);
+  assert.equal(setRowHeightMode(state, "fixed"), state);
+  assert.equal(updateCellValue(state, "absent", "shot_no", "02"), state);
+  assert.equal(updateCellValue(state, "r1", "absent", "02"), state);
   assert.equal(setGroupByField(state, "absent"), state);
   assert.equal(setGroupByField(state, ""), state);
   assert.equal(setSortByField(state, "absent"), state);
@@ -228,7 +245,7 @@ test("toTemplate exports layout settings without session-only data", () => {
   assert.deepEqual(exported, {
     name: "保存模板",
     paper: { size: "A4", orientation: "landscape" },
-    table: { rowHeight: 96, avoidRowPageBreak: true },
+    table: { rowHeight: 96, avoidRowPageBreak: true, rowHeightMode: "fixed" },
     organization: {
       groupByFieldId: "reference",
       sortByFieldId: "shot_no",

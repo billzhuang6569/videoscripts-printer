@@ -192,6 +192,15 @@ test("template supports portrait A4", () => {
   assert.deepEqual(validateTemplate(template).errors, []);
 });
 
+test("template validates row height mode when present", () => {
+  const template = structuredClone(validTemplate);
+  template.table.rowHeightMode = "auto";
+  assert.deepEqual(validateTemplate(template).errors, []);
+
+  template.table.rowHeightMode = "stretch";
+  assert.match(validateTemplate(template).errors[0], /行高模式/);
+});
+
 test("template reports bad orientation and duplicate columns", () => {
   const template = structuredClone(validTemplate);
   template.name = "坏模板";

@@ -62,12 +62,21 @@ test("renderCellValue renders multi-select values as compact tags", () => {
 test("renderCellValue renders todo values with markdown-like boxes", () => {
   const html = renderCellValue("todo", "[ ] 确认场地\n[x] 准备脱敏屏幕", "sample");
 
-  assert.match(html, /class="cell-todo-list"/);
+  assert.match(html, /class="cell-markdown"/);
   assert.match(html, /class="cell-todo-item"><span class="cell-todo-box"/);
   assert.match(html, /class="cell-todo-text">确认场地<\/span>/);
   assert.match(html, /class="cell-todo-item is-checked"/);
   assert.match(html, /class="cell-todo-text">准备脱敏屏幕<\/span>/);
   assert.doesNotMatch(html, /\[ \]|\[x\]/);
+});
+
+test("renderCellValue renders safe markdown for text cells", () => {
+  const html = renderCellValue("text", "### 小标题\n- **重点**\n正文 `code` [链接](https://example.com)", "sample");
+
+  assert.match(html, /<h5>小标题<\/h5>/);
+  assert.match(html, /<strong>重点<\/strong>/);
+  assert.match(html, /<code>code<\/code>/);
+  assert.match(html, /href="https:\/\/example\.com"/);
 });
 
 test("renderCellValue turns colored label prefixes into rounded text tags", () => {
@@ -101,6 +110,13 @@ test("renderPrintTable renders visible headers, row height, and omits hidden col
   assert.match(html, /data-field="tags"/);
   assert.doesNotMatch(html, /隐藏备注/);
   assert.doesNotMatch(html, /不应渲染/);
+});
+
+test("renderPrintTable omits fixed row height when auto row height is enabled", () => {
+  const layout = createLayout(fields, { ...template, table: { ...template.table, rowHeightMode: "auto" } });
+  const html = renderPrintTable(session, layout, "sample-shoot");
+
+  assert.doesNotMatch(html, /style="height: 123px;"/);
 });
 
 test("renderPrintTable includes header resize handles for visible columns", () => {

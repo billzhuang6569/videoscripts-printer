@@ -6,6 +6,7 @@ import {
   loadSession,
   loadSessionLayout,
   loadTemplate,
+  saveSessionData,
   saveSessionLayout,
   saveTemplate
 } from "../../public/js/api.js";
@@ -33,6 +34,7 @@ test("api module calls browser-safe server endpoints", async (t) => {
   await loadSessionLayout("sample shoot");
   await listTemplates();
   await loadTemplate("balanced landscape.json");
+  await saveSessionData("sample shoot", { fields: [], rows: [] });
   await saveTemplate({ name: "保存模板", paper: {}, table: {}, columns: [] });
   await saveSessionLayout("sample shoot", { name: "本次排版", paper: {}, table: {}, columns: [] });
 
@@ -44,14 +46,17 @@ test("api module calls browser-safe server endpoints", async (t) => {
       "/api/sessions/sample%20shoot/layout",
       "/api/templates",
       "/api/templates/balanced%20landscape.json",
+      "/api/sessions/sample%20shoot",
       "/api/templates",
       "/api/sessions/sample%20shoot/layout"
     ]
   );
-  assert.equal(calls[5].options.method, "POST");
+  assert.equal(calls[5].options.method, "PUT");
   assert.equal(calls[5].options.headers["content-type"], "application/json");
-  assert.equal(calls[6].options.method, "PUT");
+  assert.equal(calls[6].options.method, "POST");
   assert.equal(calls[6].options.headers["content-type"], "application/json");
+  assert.equal(calls[7].options.method, "PUT");
+  assert.equal(calls[7].options.headers["content-type"], "application/json");
 });
 
 test("api module surfaces JSON error messages", async (t) => {

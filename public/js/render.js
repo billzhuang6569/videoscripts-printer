@@ -35,41 +35,94 @@ function normalizeList(value) {
   return [value];
 }
 
-function renderTags(value) {
-  const tags = normalizeList(value).filter((tag) => tag != null && String(tag).length > 0);
-  if (tags.length === 0) return EMPTY;
-
-  return `<div class="cell-tags">${tags.map((tag) => `<span class="cell-tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
-}
-
-function normalizeTodoItems(value) {
+function normalizeTags(value) {
   if (Array.isArray(value)) return value;
   if (value == null || value === EMPTY) return [];
   return String(value)
-    .split(/\r?\n/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+    .split(/\s*\/\s*/u)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
 }
 
-function parseTodoItem(value) {
-  const text = String(value ?? EMPTY);
-  const match = text.match(/^(?:[-*]\s*)?\[( |x|X)\]\s*(.*)$/u);
-  if (!match) return { checked: false, text };
-  return { checked: match[1].toLowerCase() === "x", text: match[2] };
+function renderInlineMarkdown(value) {
+  let html = escapeHtml(value);
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/gu, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  html = html.replace(/`([^`]+)`/gu, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/gu, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/gu, "<strong>$1</strong>");
+  html = html.replace(/\*([^*]+)\*/gu, "<em>$1</em>");
+  html = html.replace(/_([^_]+)_/gu, "<em>$1</em>");
+  return html;
 }
 
-function renderTodo(value) {
-  const items = normalizeTodoItems(value).map(parseTodoItem).filter((item) => item.text.length > 0);
-  if (items.length === 0) return EMPTY;
+function renderMarkdown(value) {
+  const lines = String(value ?? EMPTY).replace(/\r\n?/gu, "\n").split("\n");
+  const blocks = [];
+  let listItems = [];
+  let paragraph = [];
 
-  const renderedItems = items
-    .map((item) => {
-      const checkedClass = item.checked ? " is-checked" : EMPTY;
-      return `<div class="cell-todo-item${checkedClass}"><span class="cell-todo-box" aria-hidden="true"></span><span class="cell-todo-text">${escapeHtml(item.text)}</span></div>`;
-    })
-    .join("");
+  function flushParagraph() {
+    if (paragraph.length === 0) return;
+    blocks.push(`<p>${renderInlineMarkdown(paragraph.join(" "))}</p>`);
+    paragraph = [];
+  }
 
-  return `<div class="cell-todo-list">${renderedItems}</div>`;
+  function flushList() {
+    if (listItems.length === 0) return;
+    blocks.push(`<ul>${listItems.join("")}</ul>`);
+    listItems = [];
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line.length === 0) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const todoMatch = line.match(/^(?:[-*]\s*)?\[( |x|X)\]\s+(.+)$/u);
+    if (todoMatch) {
+      flushParagraph();
+      const checkedClass = todoMatch[1].toLowerCase() === "x" ? " is-checked" : EMPTY;
+      listItems.push(
+        `<li class="cell-todo-item${checkedClass}"><span class="cell-todo-box" aria-hidden="true"></span><span class="cell-todo-text">${renderInlineMarkdown(todoMatch[2])}</span></li>`
+      );
+      continue;
+    }
+
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/u);
+    if (bulletMatch) {
+      flushParagraph();
+      listItems.push(`<li>${renderInlineMarkdown(bulletMatch[1])}</li>`);
+      continue;
+    }
+
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/u);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      const level = headingMatch[1].length + 2;
+      blocks.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+
+  if (blocks.length === 0) return EMPTY;
+  return `<div class="cell-markdown">${blocks.join("")}</div>`;
+}
+
+function renderTags(value) {
+  const tags = normalizeTags(value).filter((tag) => tag != null && String(tag).length > 0);
+  if (tags.length === 0) return EMPTY;
+
+  return `<div class="cell-tags">${tags.map((tag) => `<span class="cell-tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
 }
 
 function splitTagParts(value) {
@@ -117,7 +170,7 @@ function renderImages(value, sessionId) {
     const caption = typeof image.caption === "string" ? image.caption : EMPTY;
     const src = `/assets/${encodedSessionId}/${encodeAssetPath(image.path)}`;
     const alt = caption || image.path;
-    const captionMarkup = caption ? `<figcaption class="print-image-caption">${escapeHtml(caption)}</figcaption>` : EMPTY;
+    const captionMarkup = caption ? `<figcaption class="print-image-caption">${renderInlineMarkdown(caption)}</figcaption>` : EMPTY;
 
     return `<figure class="print-image-frame"><img class="print-image print-image-contain" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}">${captionMarkup}</figure>`;
   });
@@ -128,10 +181,9 @@ function renderImages(value, sessionId) {
 export function renderCellValue(type, value, sessionId) {
   if (type === "multiSelect") return renderTags(value);
   if (type === "image") return renderImages(value, sessionId);
-  if (type === "todo") return renderTodo(value);
   const colorTaggedText = renderColorTaggedText(value);
   if (colorTaggedText) return colorTaggedText;
-  return `<span class="cell-text">${escapeHtml(value)}</span>`;
+  return renderMarkdown(value);
 }
 
 function fieldTypesById(session) {
@@ -222,7 +274,7 @@ function renderDataRow(row, columns, fieldTypes, rowStyle, sessionId) {
     .map((column) => {
       const type = column.type ?? fieldTypes.get(column.fieldId) ?? "text";
       const value = row.cells?.[column.fieldId];
-      return `<td data-field="${escapeHtml(column.fieldId)}">${renderCellValue(type, value, sessionId)}</td>`;
+      return `<td class="editable-cell" data-row-id="${escapeHtml(row.id)}" data-field="${escapeHtml(column.fieldId)}" data-cell-type="${escapeHtml(type)}">${renderCellValue(type, value, sessionId)}</td>`;
     })
     .join("");
 
@@ -233,7 +285,8 @@ export function renderPrintTable(session, layout, sessionId) {
   const columns = visibleColumns(layout);
   const fieldTypes = fieldTypesById(session);
   const rowHeight = Number(layout?.table?.rowHeight);
-  const rowStyle = Number.isFinite(rowHeight) && rowHeight > 0 ? ` style="height: ${rowHeight}px;"` : EMPTY;
+  const autoRowHeight = layout?.table?.rowHeightMode === "auto";
+  const rowStyle = !autoRowHeight && Number.isFinite(rowHeight) && rowHeight > 0 ? ` style="height: ${rowHeight}px;"` : EMPTY;
   const avoidBreakClass = layout?.table?.avoidRowPageBreak === false ? EMPTY : " print-table-avoid-row-break";
 
   const colgroup = columns

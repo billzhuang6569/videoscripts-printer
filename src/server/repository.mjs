@@ -145,6 +145,28 @@ export function createRepository(rootDir) {
       return readJson(filePath);
     },
 
+    async saveSession(sessionId, data) {
+      if (!isSinglePathSegment(sessionId)) {
+        throw new Error("非法 session 路径");
+      }
+
+      const sessionDir = ensureInside(importsDir, path.join(importsDir, sessionId), "非法 session 路径");
+      const filePath = ensureInside(sessionDir, path.join(sessionDir, "data.json"), "非法 session 路径");
+
+      try {
+        const existing = await lstat(filePath);
+        if (existing.isSymbolicLink()) {
+          throw new Error("非法 session 路径");
+        }
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
+        throw new Error("非法 session 路径");
+      }
+
+      await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+      return { id: sessionId, title: readTitle(data, sessionId) };
+    },
+
     async loadSessionLayout(sessionId) {
       if (!isSinglePathSegment(sessionId)) {
         throw new Error("非法 session 路径");

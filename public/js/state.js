@@ -1,4 +1,4 @@
-import { DEFAULT_SORT_DIRECTION, SORT_DIRECTIONS } from "./schema.js";
+import { DEFAULT_ROW_HEIGHT_MODE, DEFAULT_SORT_DIRECTION, ROW_HEIGHT_MODES, SORT_DIRECTIONS } from "./schema.js";
 import { clampColumnWidth, clampRowHeight, createLayout } from "./layout.js";
 
 function cloneLayout(layout) {
@@ -44,6 +44,17 @@ export function createInitialState(session, template) {
   };
 }
 
+function cloneSession(session) {
+  return {
+    ...session,
+    fields: session.fields.map((field) => ({ ...field })),
+    rows: session.rows.map((row) => ({
+      ...row,
+      cells: { ...(row.cells ?? {}) }
+    }))
+  };
+}
+
 export function renameColumn(state, fieldId, label) {
   return updateColumn(state, fieldId, (column) => {
     column.label = label;
@@ -75,6 +86,27 @@ export function setRowHeight(state, rowHeight) {
   const layout = cloneLayout(state.layout);
   layout.table.rowHeight = nextRowHeight;
   return { ...state, layout };
+}
+
+export function setRowHeightMode(state, mode) {
+  const nextMode = ROW_HEIGHT_MODES.includes(mode) ? mode : DEFAULT_ROW_HEIGHT_MODE;
+  if ((state.layout.table.rowHeightMode ?? DEFAULT_ROW_HEIGHT_MODE) === nextMode) return state;
+
+  const layout = cloneLayout(state.layout);
+  layout.table.rowHeightMode = nextMode;
+  return { ...state, layout };
+}
+
+export function updateCellValue(state, rowId, fieldId, value) {
+  const rowIndex = state.session.rows.findIndex((row) => row.id === rowId);
+  if (rowIndex === -1 || !state.session.fields.some((field) => field.id === fieldId)) return state;
+
+  const currentValue = state.session.rows[rowIndex].cells?.[fieldId];
+  if (JSON.stringify(currentValue) === JSON.stringify(value)) return state;
+
+  const session = cloneSession(state.session);
+  session.rows[rowIndex].cells[fieldId] = value;
+  return { ...state, session };
 }
 
 export function moveColumn(state, fieldId, nextIndex) {

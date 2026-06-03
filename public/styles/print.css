@@ -13,7 +13,8 @@ body {
 
 .top-toolbar,
 .settings-panel,
-.paper-meta {
+.paper-meta,
+.cell-editor {
   display: none !important;
 }
 
@@ -93,6 +94,23 @@ body {
 .print-table td {
   padding: 5pt 6pt;
   background: #fff !important;
+}
+
+.cell-markdown p,
+.cell-markdown ul,
+.cell-markdown h3,
+.cell-markdown h4,
+.cell-markdown h5 {
+  margin: 0;
+}
+
+.cell-markdown ul {
+  padding-left: 11pt;
+}
+
+.cell-markdown .cell-todo-item {
+  list-style: none;
+  margin-left: -11pt;
 }
 
 .resize-handle {
