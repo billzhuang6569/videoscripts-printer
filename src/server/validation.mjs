@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   FIELD_TYPES,
   MAX_COLUMN_WIDTH,
@@ -8,16 +9,45 @@ import {
   PAPER_SIZES
 } from "../shared/schema.mjs";
 
+const DEFAULT_ALLOWED_IMAGE_EXTENSIONS = Object.freeze([".svg", ".png", ".jpg", ".jpeg", ".webp"]);
+
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function isSafeRelativePath(value) {
-  return typeof value === "string" && value.length > 0 && !value.startsWith("/") && !value.includes("..");
+function isRenderablePrimitive(value) {
+  return value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value);
 }
 
-export function validateSessionData(data) {
+function normalizeAllowedExtensions(extensions) {
+  return new Set(
+    extensions.map((extension) => {
+      const normalized = extension.toLowerCase();
+      return normalized.startsWith(".") ? normalized : `.${normalized}`;
+    })
+  );
+}
+
+function normalizeSafeRelativePath(value) {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  if (path.posix.isAbsolute(value)) return null;
+
+  const normalized = path.posix.normalize(value);
+  if (normalized === "." || normalized === ".." || normalized.startsWith("../")) return null;
+
+  return normalized;
+}
+
+function hasAllowedExtension(value, allowedExtensions) {
+  return allowedExtensions.has(path.posix.extname(value).toLowerCase());
+}
+
+export function validateSessionData(data, options = {}) {
   const errors = [];
+  const allowedImageExtensions = normalizeAllowedExtensions(
+    options.allowedImageExtensions ?? DEFAULT_ALLOWED_IMAGE_EXTENSIONS
+  );
+  const imageExists = typeof options.imageExists === "function" ? options.imageExists : null;
 
   if (!isPlainObject(data)) {
     return { errors: ["data.json 必须是对象"] };
@@ -70,6 +100,10 @@ export function validateSessionData(data) {
         return;
       }
 
+      if (type === "text" && !isRenderablePrimitive(value)) {
+        errors.push(`第 ${rowIndex + 1} 行字段 ${fieldId} 必须是可渲染的文本值（字符串、数字、布尔值或空值）`);
+      }
+
       if (type === "multiSelect" && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
         errors.push(`第 ${rowIndex + 1} 行字段 ${fieldId} 必须是字符串数组`);
       }
@@ -81,8 +115,21 @@ export function validateSessionData(data) {
         }
 
         value.forEach((image, imageIndex) => {
-          if (!isPlainObject(image) || !isSafeRelativePath(image.path)) {
+          const normalizedPath = isPlainObject(image) ? normalizeSafeRelativePath(image.path) : null;
+          if (!normalizedPath) {
             errors.push(`第 ${rowIndex + 1} 行字段 ${fieldId} 的第 ${imageIndex + 1} 张图片路径必须是 session 内的相对路径`);
+            return;
+          }
+
+          if (!hasAllowedExtension(normalizedPath, allowedImageExtensions)) {
+            errors.push(
+              `第 ${rowIndex + 1} 行字段 ${fieldId} 的第 ${imageIndex + 1} 张图片路径必须使用可显示的图片扩展名`
+            );
+            return;
+          }
+
+          if (imageExists && !imageExists(normalizedPath)) {
+            errors.push(`第 ${rowIndex + 1} 行字段 ${fieldId} 的第 ${imageIndex + 1} 张图片不存在：${normalizedPath}`);
           }
         });
       }
@@ -92,7 +139,7 @@ export function validateSessionData(data) {
   return { errors };
 }
 
-export function validateTemplate(template) {
+export function validateTemplate(template, options = {}) {
   const errors = [];
 
   if (!isPlainObject(template)) return { errors: ["模板必须是对象"] };
@@ -116,6 +163,7 @@ export function validateTemplate(template) {
   }
 
   const seen = new Set();
+  const fieldIds = options.fieldIds ? new Set(options.fieldIds) : null;
   template.columns.forEach((column, index) => {
     if (!isPlainObject(column)) {
       errors.push(`第 ${index + 1} 列必须是对象`);
@@ -124,6 +172,14 @@ export function validateTemplate(template) {
 
     if (typeof column.fieldId !== "string" || column.fieldId.length === 0) {
       errors.push(`第 ${index + 1} 列缺少 fieldId`);
+    }
+    if (
+      fieldIds &&
+      typeof column.fieldId === "string" &&
+      column.fieldId.length > 0 &&
+      !fieldIds.has(column.fieldId)
+    ) {
+      errors.push(`第 ${index + 1} 列引用了 fields 中不存在的字段：${column.fieldId}`);
     }
     if (seen.has(column.fieldId)) errors.push(`模板重复引用字段：${column.fieldId}`);
     seen.add(column.fieldId);

@@ -56,6 +56,24 @@ test("multiSelect must be string array", () => {
   assert.match(validateSessionData(session).errors[0], /必须是字符串数组/);
 });
 
+test("text fields accept renderable primitives", () => {
+  for (const value of ["01", 1, true, null, undefined]) {
+    const session = structuredClone(validSession);
+    session.rows[0].cells.shot_no = value;
+    assert.deepEqual(validateSessionData(session).errors, []);
+  }
+});
+
+test("text fields reject arrays and objects", () => {
+  const arraySession = structuredClone(validSession);
+  arraySession.rows[0].cells.shot_no = ["01"];
+  const objectSession = structuredClone(validSession);
+  objectSession.rows[0].cells.shot_no = { value: "01" };
+
+  assert.match(validateSessionData(arraySession).errors[0], /第 1 行字段 shot_no.*可渲染的文本值/);
+  assert.match(validateSessionData(objectSession).errors[0], /第 1 行字段 shot_no.*可渲染的文本值/);
+});
+
 test("image field must be image array", () => {
   const session = structuredClone(validSession);
   session.rows[0].cells.reference = { path: "assets/shot.svg" };
@@ -66,6 +84,43 @@ test("image field must use safe relative paths", () => {
   const session = structuredClone(validSession);
   session.rows[0].cells.reference = [{ path: "../secret.png" }];
   assert.match(validateSessionData(session).errors[0], /必须是 session 内的相对路径/);
+});
+
+test("image path safety allows safe double-dot filenames and rejects root escapes", () => {
+  const session = structuredClone(validSession);
+  session.rows[0].cells.reference = [{ path: "assets/shot..v2.svg" }, { path: "assets/../shot.png" }];
+  assert.deepEqual(validateSessionData(session).errors, []);
+
+  const emptyPathSession = structuredClone(validSession);
+  emptyPathSession.rows[0].cells.reference = [{ path: "" }];
+  assert.match(validateSessionData(emptyPathSession).errors[0], /必须是 session 内的相对路径/);
+
+  const absolutePathSession = structuredClone(validSession);
+  absolutePathSession.rows[0].cells.reference = [{ path: "/assets/shot.png" }];
+  assert.match(validateSessionData(absolutePathSession).errors[0], /必须是 session 内的相对路径/);
+
+  const escapeSession = structuredClone(validSession);
+  escapeSession.rows[0].cells.reference = [{ path: "assets/../../secret.png" }];
+  assert.match(validateSessionData(escapeSession).errors[0], /必须是 session 内的相对路径/);
+});
+
+test("image field only allows browser-displayable extensions", () => {
+  const session = structuredClone(validSession);
+  session.rows[0].cells.reference = [{ path: "assets/shot.gif" }];
+  assert.match(validateSessionData(session).errors[0], /可显示的图片扩展名/);
+});
+
+test("image validation can use custom extensions and existence context", () => {
+  const session = structuredClone(validSession);
+  session.rows[0].cells.reference = [{ path: "assets/shot.gif" }, { path: "assets/missing.gif" }];
+
+  const errors = validateSessionData(session, {
+    allowedImageExtensions: [".gif"],
+    imageExists: (imagePath) => imagePath !== "assets/missing.gif"
+  }).errors.join("\n");
+
+  assert.match(errors, /第 1 行字段 reference 的第 2 张图片不存在：assets\/missing.gif/);
+  assert.doesNotMatch(errors, /可显示的图片扩展名/);
 });
 
 test("valid template passes", () => {
@@ -99,4 +154,12 @@ test("template column width must be within bounds", () => {
   const template = structuredClone(validTemplate);
   template.columns[0].width = 24;
   assert.match(validateTemplate(template).errors[0], /列宽度必须在/);
+});
+
+test("template reports missing field references when field ids are provided", () => {
+  const template = structuredClone(validTemplate);
+  template.columns.push({ fieldId: "missing", label: "缺失", visible: true, width: 80 });
+
+  assert.deepEqual(validateTemplate(template).errors, []);
+  assert.match(validateTemplate(template, { fieldIds: ["shot_no"] }).errors[0], /第 2 列引用了 fields 中不存在的字段：missing/);
 });
