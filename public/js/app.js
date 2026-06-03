@@ -39,6 +39,8 @@ let currentSessionId = "";
 let currentTemplateId = "";
 let state = null;
 let loadSequence = 0;
+let draggedFieldId = "";
+let fieldPointerDrag = null;
 
 function queryElements() {
   for (const [key, selector] of Object.entries(selectors)) {
@@ -110,11 +112,12 @@ function createFieldRow(column, index) {
   const field = fieldById(column.fieldId);
   const type = field?.type ?? column.type ?? "text";
   const visibilityLabel = column.label || field?.name || column.fieldId;
-  const disabledUp = index === 0 ? " disabled" : "";
-  const disabledDown = index === state.layout.columns.length - 1 ? " disabled" : "";
 
   return `
     <article class="field-row" data-field-row="${escapeAttr(column.fieldId)}">
+      <button class="drag-handle" type="button" data-drag-field="${escapeAttr(column.fieldId)}" aria-label="拖动排序：${escapeAttr(visibilityLabel)}" title="拖动排序">
+        <span aria-hidden="true"></span>
+      </button>
       <label class="visibility-toggle" title="显示字段">
         <input type="checkbox" aria-label="显示字段：${escapeAttr(visibilityLabel)}" data-field-visible="${escapeAttr(column.fieldId)}"${column.visible ? " checked" : ""}>
         <span aria-hidden="true"></span>
@@ -126,15 +129,11 @@ function createFieldRow(column, index) {
         </label>
         <div class="field-meta">
           <span class="field-type">${escapeHtml(type)}</span>
-          <label>
-            <span>宽</span>
-            <input type="number" min="${MIN_COLUMN_WIDTH}" max="${MAX_COLUMN_WIDTH}" step="4" value="${escapeAttr(column.width)}" data-field-width="${escapeAttr(column.fieldId)}">
+          <label class="width-slider">
+            <span>宽度 <output data-field-width-output="${escapeAttr(column.fieldId)}">${escapeHtml(column.width)} px</output></span>
+            <input type="range" min="${MIN_COLUMN_WIDTH}" max="${MAX_COLUMN_WIDTH}" step="4" value="${escapeAttr(column.width)}" data-field-width="${escapeAttr(column.fieldId)}">
           </label>
         </div>
-      </div>
-      <div class="move-controls" aria-label="移动字段">
-        <button type="button" data-move-field="${escapeAttr(column.fieldId)}" data-move-direction="-1"${disabledUp} title="上移">↑</button>
-        <button type="button" data-move-field="${escapeAttr(column.fieldId)}" data-move-direction="1"${disabledDown} title="下移">↓</button>
       </div>
     </article>
   `;
@@ -255,7 +254,125 @@ function syncColumnWidthControl(fieldId) {
   const input = [...(els.fieldList?.querySelectorAll("[data-field-width]") ?? [])].find(
     (item) => item.dataset.fieldWidth === fieldId
   );
+  const output = [...(els.fieldList?.querySelectorAll("[data-field-width-output]") ?? [])].find(
+    (item) => item.dataset.fieldWidthOutput === fieldId
+  );
   if (column && input) input.value = columnWidthValue(state, fieldId);
+  if (column && output) output.textContent = `${columnWidthValue(state, fieldId)} px`;
+}
+
+function clearDropMarkers() {
+  els.fieldList?.querySelectorAll(".is-drop-before, .is-drop-after, .is-dragging").forEach((row) => {
+    row.classList.remove("is-drop-before", "is-drop-after", "is-dragging");
+  });
+}
+
+function dropTargetFromEvent(event) {
+  const row = event.target?.closest?.("[data-field-row]");
+  if (!row || row.dataset.fieldRow === draggedFieldId) return null;
+  return row;
+}
+
+function dropTargetFromPoint(event) {
+  const element = document.elementFromPoint(event.clientX, event.clientY);
+  const row = element?.closest("[data-field-row]");
+  if (!row || row.dataset.fieldRow === draggedFieldId) return null;
+  return row;
+}
+
+function dropPlacement(event, row) {
+  if (!row) return "after";
+  const rect = row.getBoundingClientRect();
+  return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+}
+
+function dropIndexForTarget(targetFieldId, placement) {
+  const columnsWithoutDragged = state.layout.columns.filter((column) => column.fieldId !== draggedFieldId);
+  if (!targetFieldId) return columnsWithoutDragged.length;
+
+  const targetIndex = columnsWithoutDragged.findIndex((column) => column.fieldId === targetFieldId);
+  if (targetIndex === -1) return columnsWithoutDragged.length;
+  return placement === "after" ? targetIndex + 1 : targetIndex;
+}
+
+function renderDropMarker(event) {
+  clearDropMarkers();
+  const target = dropTargetFromPoint(event) ?? dropTargetFromEvent(event);
+  const dragged = els.fieldList.querySelector(`[data-field-row="${CSS.escape(draggedFieldId)}"]`);
+  dragged?.classList.add("is-dragging");
+
+  if (!target) return;
+  target.classList.add(dropPlacement(event, target) === "after" ? "is-drop-after" : "is-drop-before");
+}
+
+function handleFieldPointerDown(event) {
+  const handle = event.target.closest("[data-drag-field]");
+  if (!state || !handle) return;
+
+  event.preventDefault();
+  draggedFieldId = handle.dataset.dragField;
+  fieldPointerDrag = {
+    fieldId: draggedFieldId,
+    pointerId: event.pointerId
+  };
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add("is-field-dragging");
+  renderDropMarker(event);
+
+  window.addEventListener("pointermove", handleFieldPointerMove);
+  window.addEventListener("pointerup", handleFieldPointerUp);
+  window.addEventListener("pointercancel", handleFieldPointerCancel);
+}
+
+function handleFieldPointerMove(event) {
+  if (!state || !fieldPointerDrag || event.pointerId !== fieldPointerDrag.pointerId) return;
+  event.preventDefault();
+  renderDropMarker(event);
+}
+
+function handleFieldPointerUp(event) {
+  if (!state || !fieldPointerDrag || event.pointerId !== fieldPointerDrag.pointerId) return;
+  event.preventDefault();
+
+  const target = dropTargetFromPoint(event) ?? dropTargetFromEvent(event);
+  const targetFieldId = target?.dataset.fieldRow ?? "";
+  const nextIndex = dropIndexForTarget(targetFieldId, dropPlacement(event, target));
+  state = moveColumn(state, draggedFieldId, nextIndex);
+  stopFieldPointerDrag();
+  render();
+}
+
+function handleFieldPointerCancel() {
+  stopFieldPointerDrag();
+}
+
+function stopFieldPointerDrag() {
+  window.removeEventListener("pointermove", handleFieldPointerMove);
+  window.removeEventListener("pointerup", handleFieldPointerUp);
+  window.removeEventListener("pointercancel", handleFieldPointerCancel);
+  document.body.classList.remove("is-field-dragging");
+  fieldPointerDrag = null;
+  draggedFieldId = "";
+  clearDropMarkers();
+}
+
+function handleFieldKeyboardMove(event) {
+  const handle = event.target.closest("[data-drag-field]");
+  if (!state || !handle || !["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+
+  event.preventDefault();
+  const fieldId = handle.dataset.dragField;
+  const currentIndex = state.layout.columns.findIndex((column) => column.fieldId === fieldId);
+  const nextIndexByKey = {
+    ArrowUp: currentIndex - 1,
+    ArrowDown: currentIndex + 1,
+    Home: 0,
+    End: state.layout.columns.length - 1
+  };
+
+  state = moveColumn(state, fieldId, nextIndexByKey[event.key]);
+  render();
+  els.fieldList.querySelector(`[data-drag-field="${CSS.escape(fieldId)}"]`)?.focus();
 }
 
 function handleResizePointerDown(event) {
@@ -337,14 +454,8 @@ function bindEvents() {
     render();
   });
 
-  els.fieldList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-move-field]");
-    if (!button) return;
-
-    const currentIndex = state.layout.columns.findIndex((column) => column.fieldId === button.dataset.moveField);
-    state = moveColumn(state, button.dataset.moveField, currentIndex + Number(button.dataset.moveDirection));
-    render();
-  });
+  els.fieldList.addEventListener("pointerdown", handleFieldPointerDown);
+  els.fieldList.addEventListener("keydown", handleFieldKeyboardMove);
 
   els.saveTemplate.addEventListener("click", () => {
     handleSaveTemplate().catch(handleError);
