@@ -10,10 +10,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = path.resolve(__dirname, "../..");
 const DEFAULT_PUBLIC = path.join(DEFAULT_ROOT, "public");
 const NOT_FOUND_MESSAGES = ["非法 session 路径", "非法图片路径", "非法模板路径", "非法静态文件路径"];
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
-function sendJson(res, status, body) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+function sendJson(res, status, body, headers = {}) {
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", ...headers });
   res.end(JSON.stringify(body));
+}
+
+function clientError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function methodNotAllowed(res, methods) {
+  return sendJson(res, 405, { errors: ["方法不允许"] }, { Allow: methods.join(", ") });
 }
 
 function validationError(errors) {
@@ -27,6 +38,7 @@ function statusForError(error) {
   if (error?.statusCode) return error.statusCode;
   if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return 404;
   if (NOT_FOUND_MESSAGES.includes(error?.message)) return 404;
+  if (error instanceof URIError) return 400;
   if (error instanceof SyntaxError) return 422;
   return 500;
 }
@@ -37,12 +49,36 @@ function errorsForResponse(error, status) {
   return [error?.message || "请求失败"];
 }
 
+function hasJsonContentType(req) {
+  const contentType = req.headers["content-type"];
+  if (typeof contentType !== "string") return false;
+  return contentType.split(";", 1)[0].trim().toLowerCase() === "application/json";
+}
+
 async function readJsonBody(req) {
+  if (!hasJsonContentType(req)) {
+    throw clientError("Content-Type 必须是 application/json", 415);
+  }
+
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.byteLength;
+    if (size > MAX_JSON_BODY_BYTES) {
+      throw clientError("请求体过大", 413);
+    }
+    chunks.push(chunk);
+  }
 
   const body = Buffer.concat(chunks).toString("utf8").trim();
-  return body.length > 0 ? JSON.parse(body) : {};
+  try {
+    return body.length > 0 ? JSON.parse(body) : {};
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw clientError("JSON 请求体格式错误", 400);
+    }
+    throw error;
+  }
 }
 
 async function sendFile(res, filePath) {
@@ -150,34 +186,35 @@ export function createAppServer({ rootDir = DEFAULT_ROOT, publicDir = DEFAULT_PU
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
 
-      if (req.method === "GET" && url.pathname === "/api/sessions") {
-        return sendJson(res, 200, await repo.listSessions());
+      if (url.pathname === "/api/sessions") {
+        if (req.method === "GET") return sendJson(res, 200, await repo.listSessions());
+        return methodNotAllowed(res, ["GET"]);
       }
 
-      if (req.method === "GET" && url.pathname.startsWith("/api/sessions/")) {
+      if (url.pathname.startsWith("/api/sessions/")) {
+        if (req.method !== "GET") return methodNotAllowed(res, ["GET"]);
         const sessionId = decodeURIComponent(url.pathname.slice("/api/sessions/".length));
         const data = await repo.loadSession(sessionId);
         await validateLoadedSession(repo, sessionId, data);
         return sendJson(res, 200, data);
       }
 
-      if (req.method === "GET" && url.pathname === "/api/templates") {
-        return sendJson(res, 200, await repo.listTemplates());
+      if (url.pathname === "/api/templates") {
+        if (req.method === "GET") return sendJson(res, 200, await repo.listTemplates());
+        if (req.method !== "POST") return methodNotAllowed(res, ["GET", "POST"]);
+        const template = await readJsonBody(req);
+        const result = validateTemplate(template);
+        if (result.errors.length > 0) throw validationError(result.errors);
+        return sendJson(res, 201, await repo.saveTemplate(template));
       }
 
-      if (req.method === "GET" && url.pathname.startsWith("/api/templates/")) {
+      if (url.pathname.startsWith("/api/templates/")) {
+        if (req.method !== "GET") return methodNotAllowed(res, ["GET"]);
         const templateId = decodeURIComponent(url.pathname.slice("/api/templates/".length));
         const template = await repo.loadTemplate(templateId);
         const result = validateTemplate(template);
         if (result.errors.length > 0) throw validationError(result.errors);
         return sendJson(res, 200, template);
-      }
-
-      if (req.method === "POST" && url.pathname === "/api/templates") {
-        const template = await readJsonBody(req);
-        const result = validateTemplate(template);
-        if (result.errors.length > 0) throw validationError(result.errors);
-        return sendJson(res, 201, await repo.saveTemplate(template));
       }
 
       if (req.method === "GET" && url.pathname.startsWith("/assets/")) {

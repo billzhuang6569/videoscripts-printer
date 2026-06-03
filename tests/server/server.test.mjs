@@ -115,6 +115,61 @@ test("server loads and saves validated templates", async (t) => {
   assert.equal(savedBody.id, "server-template.json");
 });
 
+test("server rejects malformed percent-encoded paths as client errors", async (t) => {
+  const base = await withServer(t);
+
+  const staticPath = await fetch(`${base}/%E0%A4%A`);
+  const apiPath = await fetch(`${base}/api/sessions/%E0%A4%A`);
+
+  assert.equal(staticPath.status, 400);
+  assert.equal(apiPath.status, 400);
+});
+
+test("server distinguishes malformed JSON from schema validation", async (t) => {
+  const base = await withServer(t);
+
+  const malformed = await fetch(`${base}/api/templates`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{"
+  });
+  const invalidSchema = await fetch(`${base}/api/templates`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "" })
+  });
+
+  assert.equal(malformed.status, 400);
+  assert.equal(invalidSchema.status, 422);
+});
+
+test("server enforces JSON content type and size for template posts", async (t) => {
+  const base = await withServer(t);
+
+  const wrongType = await fetch(`${base}/api/templates`, {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+    body: JSON.stringify({ name: "" })
+  });
+  const oversized = await fetch(`${base}/api/templates`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "x".repeat(1024 * 1024) })
+  });
+
+  assert.equal(wrongType.status, 415);
+  assert.equal(oversized.status, 413);
+});
+
+test("server returns method not allowed for known API routes", async (t) => {
+  const base = await withServer(t);
+
+  const response = await fetch(`${base}/api/sessions`, { method: "POST" });
+
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET");
+});
+
 test("server serves static frontend and encoded session assets", async (t) => {
   const base = await withServer(t);
 
