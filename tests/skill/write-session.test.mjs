@@ -7,7 +7,18 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 const execFileAsync = promisify(execFile);
-const scriptPath = path.resolve(".agents/skills/zhuangsir-script-printer/scripts/write-session.mjs");
+const scriptPath = path.resolve("skills/zhuangsir-script-printer/scripts/write-session.mjs");
+const ensureScriptPath = path.resolve("skills/zhuangsir-script-printer/scripts/ensure-printer.mjs");
+
+test("ensure-printer locates the current HTML printer root", async () => {
+  const { stdout } = await execFileAsync(process.execPath, [ensureScriptPath, "--root", process.cwd()]);
+  const result = JSON.parse(stdout);
+
+  assert.equal(result.root, process.cwd());
+  assert.equal(result.installed, false);
+  assert.equal(typeof result.running, "boolean");
+  assert.match(result.writeSessionCommand, /write-session\.mjs/);
+});
 
 test("write-session creates a printer session and copies relative image assets", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "htmlprinter-skill-root-"));
@@ -37,7 +48,17 @@ test("write-session creates a printer session and copies relative image assets",
   const inputPath = path.join(source, "data.json");
   await writeFile(inputPath, `${JSON.stringify(input, null, 2)}\n`, "utf8");
 
-  const { stdout } = await execFileAsync(process.execPath, [scriptPath, "--input", inputPath, "--session-id", "skill-copy", "--root", root]);
+  const { stdout } = await execFileAsync(process.execPath, [
+    scriptPath,
+    "--input",
+    inputPath,
+    "--session-id",
+    "skill-copy",
+    "--root",
+    process.cwd(),
+    "--output-root",
+    root
+  ]);
   const result = JSON.parse(stdout);
   const sessionData = JSON.parse(await readFile(path.join(root, "imports", "skill-copy", "data.json"), "utf8"));
   const copiedAsset = await readFile(path.join(root, "imports", "skill-copy", "assets", "ref.svg"), "utf8");

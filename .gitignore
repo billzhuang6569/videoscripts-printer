@@ -6,3 +6,6 @@ coverage/
 .claude/
 .kiro/
 .qoder/
+imports/*
+!imports/sample-shoot/
+!imports/sample-shoot/**

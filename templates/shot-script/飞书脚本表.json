@@ -1,0 +1,62 @@
+{
+  "name": "飞书脚本表",
+  "paper": {
+    "size": "A4",
+    "orientation": "landscape"
+  },
+  "table": {
+    "rowHeight": 112,
+    "avoidRowPageBreak": true
+  },
+  "columns": [
+    {
+      "fieldId": "shot_no",
+      "label": "#",
+      "type": "text",
+      "visible": true,
+      "width": 48
+    },
+    {
+      "fieldId": "content_summary",
+      "label": "对应内容摘要",
+      "type": "text",
+      "visible": true,
+      "width": 145
+    },
+    {
+      "fieldId": "shoot_area",
+      "label": "拍摄区域",
+      "type": "text",
+      "visible": true,
+      "width": 73
+    },
+    {
+      "fieldId": "type",
+      "label": "类型",
+      "type": "multiSelect",
+      "visible": true,
+      "width": 75
+    },
+    {
+      "fieldId": "shot_content",
+      "label": "镜头内容",
+      "type": "text",
+      "visible": true,
+      "width": 160
+    },
+    {
+      "fieldId": "prep_confirm",
+      "label": "需提前准备 / 确认",
+      "type": "todo",
+      "visible": true,
+      "width": 93
+    },
+    {
+      "fieldId": "camera_notes",
+      "label": "摄像 Notes / 后期备注",
+      "type": "text",
+      "visible": true,
+      "width": 164
+    }
+  ]
+}

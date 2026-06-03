@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>庄Sir的脚本打印器</title>
-    <link rel="icon" href="data:,">
+    <link rel="icon" type="image/png" href="/brand/zhuangsir-script-printer-logo.png">
     <link rel="stylesheet" href="/styles/app.css">
     <link rel="stylesheet" href="/styles/print.css" media="print">
   </head>
@@ -12,28 +12,35 @@
     <div class="app-shell" data-app-shell>
       <header class="top-toolbar" aria-label="打印预览工具栏">
         <div class="brand-block">
-          <h1>庄Sir的脚本打印器</h1>
-          <p data-status-text>正在加载...</p>
+          <img class="brand-mark" src="/brand/zhuangsir-script-printer-logo.png" alt="" width="42" height="42" decoding="async">
+          <div>
+            <h1>庄Sir的脚本打印器</h1>
+            <p data-status-text>正在加载...</p>
+          </div>
         </div>
 
         <div class="toolbar-controls">
-          <label class="toolbar-field">
-            <span>数据</span>
-            <select id="session-select" data-session-select></select>
-          </label>
+          <div class="toolbar-field-group">
+            <label class="toolbar-field">
+              <span>数据</span>
+              <select id="session-select" data-session-select></select>
+            </label>
 
-          <label class="toolbar-field">
-            <span>模板</span>
-            <select id="template-select" data-template-select></select>
-          </label>
-
-          <div class="segmented-control" role="group" aria-label="纸张方向">
-            <button type="button" data-orientation-button="landscape">横向</button>
-            <button type="button" data-orientation-button="portrait">纵向</button>
+            <label class="toolbar-field">
+              <span>模板</span>
+              <select id="template-select" data-template-select></select>
+            </label>
           </div>
 
-          <button type="button" class="secondary-action" data-save-template>保存模板</button>
-          <button type="button" class="primary-action" data-print>打印</button>
+          <div class="toolbar-action-group">
+            <div class="segmented-control" role="group" aria-label="纸张方向">
+              <button type="button" data-orientation-button="landscape">横向</button>
+              <button type="button" data-orientation-button="portrait">纵向</button>
+            </div>
+
+            <button type="button" class="secondary-action" data-save-template>保存模板</button>
+            <button type="button" class="primary-action" data-print>打印 / 导出 PDF</button>
+          </div>
         </div>
       </header>
 
@@ -119,7 +126,15 @@
 
     <div class="cell-editor" data-cell-editor hidden>
       <div class="cell-editor-panel">
+        <div class="cell-editor-heading">
+          <div>
+            <span data-cell-editor-title>编辑标签</span>
+            <small data-cell-editor-subtitle></small>
+          </div>
+          <button type="button" data-cell-editor-close aria-label="关闭标签编辑器">完成</button>
+        </div>
         <div class="cell-tag-editor" data-cell-tag-editor>
+          <div class="tag-editor-selected" data-tag-editor-selected></div>
           <input type="text" data-tag-editor-search placeholder="查找或创建选项" autocomplete="off">
           <div class="tag-editor-options" data-tag-editor-options></div>
         </div>

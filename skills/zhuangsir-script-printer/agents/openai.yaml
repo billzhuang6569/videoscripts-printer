@@ -1,0 +1,4 @@
+interface:
+  display_name: "庄Sir脚本打印器"
+  short_description: "安装或启动庄Sir的脚本打印器，把脚本内容源转换为本地打印 session，并打开可打印/PDF 预览。"
+  default_prompt: "先确保庄Sir的脚本打印器本体已安装并启动，再把这个脚本内容源转换为打印 session，保持初始内容不改动，然后打开本地打印器预览。"

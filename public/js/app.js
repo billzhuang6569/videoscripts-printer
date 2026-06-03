@@ -30,6 +30,9 @@ import { renderPrintTable } from "./render.js";
 const selectors = {
   appShell: "[data-app-shell]",
   cellEditor: "[data-cell-editor]",
+  cellEditorClose: "[data-cell-editor-close]",
+  cellEditorSubtitle: "[data-cell-editor-subtitle]",
+  cellEditorTitle: "[data-cell-editor-title]",
   cellTagEditor: "[data-cell-tag-editor]",
   fieldCount: "[data-field-count]",
   fieldList: "[data-field-list]",
@@ -56,7 +59,8 @@ const selectors = {
   templateNameInput: "[data-template-name-input]",
   templateSelect: "[data-template-select]",
   tagEditorOptions: "[data-tag-editor-options]",
-  tagEditorSearch: "[data-tag-editor-search]"
+  tagEditorSearch: "[data-tag-editor-search]",
+  tagEditorSelected: "[data-tag-editor-selected]"
 };
 
 const els = {};
@@ -490,7 +494,7 @@ function syncColumnWidthControl(fieldId) {
 
 function positionCellEditor(anchor) {
   const rect = anchor.getBoundingClientRect();
-  const editorWidth = 340;
+  const editorWidth = 360;
   const editorHeight = els.cellEditor.getBoundingClientRect().height || 260;
   const left = Math.min(window.innerWidth - editorWidth - 12, Math.max(12, rect.left));
   const preferredTop = rect.bottom + 8;
@@ -511,17 +515,31 @@ function renderTagOptions() {
   const optionMarkup = visibleOptions
     .map((tag) => {
       const isSelected = selected.has(tag);
-      return `<button type="button" class="tag-option${isSelected ? " is-selected" : ""}" data-tag-option="${escapeAttr(tag)}"><span class="cell-tag">${escapeHtml(tag)}</span><span class="tag-option-state">${isSelected ? "✓" : "..."}</span></button>`;
+      return `<button type="button" class="tag-option${isSelected ? " is-selected" : ""}" data-tag-option="${escapeAttr(tag)}"><span class="cell-tag">${escapeHtml(tag)}</span><span class="tag-option-state">${isSelected ? "已选" : "添加"}</span></button>`;
     })
     .join("");
   const createMarkup = canCreate
-    ? `<button type="button" class="tag-option tag-option-create" data-tag-create="${escapeAttr(query)}"><span>创建</span><span class="cell-tag">${escapeHtml(query)}</span></button>`
+    ? `<button type="button" class="tag-option tag-option-create" data-tag-create="${escapeAttr(query)}"><span>创建选项</span><span class="cell-tag">${escapeHtml(query)}</span></button>`
     : "";
 
   els.tagEditorOptions.innerHTML = `${optionMarkup}${createMarkup}` || `<div class="tag-editor-empty">没有匹配选项</div>`;
 }
 
 function renderTagEditor() {
+  if (!cellEditorState) return;
+  const field = fieldById(cellEditorState.fieldId);
+  const column = columnByFieldId(cellEditorState.fieldId);
+  const label = column?.label || field?.name || cellEditorState.fieldId;
+  const tags = selectedTags();
+
+  if (els.cellEditorTitle) els.cellEditorTitle.textContent = `编辑 ${label}`;
+  if (els.cellEditorSubtitle) els.cellEditorSubtitle.textContent = tags.length > 0 ? `${tags.length} 个已选` : "暂无已选";
+  if (els.tagEditorSelected) {
+    els.tagEditorSelected.innerHTML =
+      tags.length > 0
+        ? tags.map((tag) => `<button type="button" class="selected-tag" data-tag-option="${escapeAttr(tag)}"><span class="cell-tag">${escapeHtml(tag)}</span><span aria-hidden="true">×</span></button>`).join("")
+        : `<span class="tag-editor-selected-empty">未选择标签</span>`;
+  }
   renderTagOptions();
 }
 
@@ -946,6 +964,8 @@ function bindEvents() {
     if (templateNameResolver) closeTemplateNameDialog("");
   });
 
+  els.cellEditorClose?.addEventListener("click", closeCellEditor);
+
   els.printSurface.addEventListener("pointerdown", handleResizePointerDown);
 
   els.printSurface.addEventListener("click", (event) => {
@@ -971,6 +991,12 @@ function bindEvents() {
     if (!option) return;
     toggleEditorTag(option.dataset.tagOption ?? option.dataset.tagCreate);
     if (option.dataset.tagCreate) els.tagEditorSearch.value = "";
+  });
+
+  els.tagEditorSelected?.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-tag-option]");
+    if (!option) return;
+    toggleEditorTag(option.dataset.tagOption);
   });
 
   document.addEventListener("pointerdown", (event) => {
