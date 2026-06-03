@@ -1,4 +1,5 @@
 import { listSessions, listTemplates, loadSession, loadTemplate, saveTemplate } from "./api.js";
+import { columnWidthValue, isDragContextActive, savedTemplateState, shouldApplyLoad } from "./app-helpers.js";
 import { MAX_COLUMN_WIDTH, MAX_ROW_HEIGHT, MIN_COLUMN_WIDTH, MIN_ROW_HEIGHT } from "./schema.js";
 import {
   createInitialState,
@@ -207,7 +208,7 @@ async function loadCurrentSelection(sessionId = selectedSessionId(), templateId 
 
   try {
     const [session, template] = await Promise.all([loadSession(sessionId), loadTemplate(templateId)]);
-    if (requestId !== loadSequence) return;
+    if (!shouldApplyLoad(requestId, loadSequence)) return;
 
     currentSessionId = sessionId;
     currentTemplateId = templateId;
@@ -215,7 +216,7 @@ async function loadCurrentSelection(sessionId = selectedSessionId(), templateId 
     render();
     setStatus("预览已就绪", "success");
   } catch (error) {
-    if (requestId === loadSequence) handleError(error);
+    if (shouldApplyLoad(requestId, loadSequence)) handleError(error);
   }
 }
 
@@ -243,14 +244,7 @@ async function handleSaveTemplate() {
   setStatus("正在保存模板...");
   const saved = await saveTemplate(toTemplate(state.layout, trimmedName));
   currentTemplateId = saved.id;
-  state = {
-    ...state,
-    templateId: saved.id,
-    layout: {
-      ...state.layout,
-      name: saved.title || trimmedName
-    }
-  };
+  state = savedTemplateState(state, saved, trimmedName);
   await refreshLists();
   els.templateSelect.value = currentTemplateId;
   setStatus("模板已保存", "success");
@@ -261,7 +255,7 @@ function syncColumnWidthControl(fieldId) {
   const input = [...(els.fieldList?.querySelectorAll("[data-field-width]") ?? [])].find(
     (item) => item.dataset.fieldWidth === fieldId
   );
-  if (column && input) input.value = String(column.width);
+  if (column && input) input.value = columnWidthValue(state, fieldId);
 }
 
 function handleResizePointerDown(event) {
@@ -276,8 +270,16 @@ function handleResizePointerDown(event) {
   const startX = event.clientX;
   const startWidth = Number(column.width);
   const startingWidth = Number.isFinite(startWidth) ? startWidth : MIN_COLUMN_WIDTH;
+  const dragContext = {
+    sessionId: state.sessionId,
+    templateId: state.templateId
+  };
 
   function onMove(moveEvent) {
+    if (!isDragContextActive(state, dragContext)) {
+      stopDrag();
+      return;
+    }
     state = resizeColumn(state, fieldId, startingWidth + moveEvent.clientX - startX);
     renderPreview();
     syncColumnWidthControl(fieldId);
@@ -324,6 +326,7 @@ function bindEvents() {
     if (widthFieldId) {
       state = resizeColumn(state, widthFieldId, Number(event.target.value));
       renderPreview();
+      syncColumnWidthControl(widthFieldId);
     }
   });
 

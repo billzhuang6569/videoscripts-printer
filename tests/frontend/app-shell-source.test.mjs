@@ -16,7 +16,7 @@ test("app shell guards async selection loads against stale renders", async () =>
 
   assert.match(source, /let loadSequence = 0/);
   assert.match(source, /const requestId = \+\+loadSequence/);
-  assert.match(source, /if \(requestId !== loadSequence\) return/);
+  assert.match(source, /shouldApplyLoad\(requestId, loadSequence\)/);
   assert.match(source, /currentSessionId = sessionId/);
   assert.match(source, /currentTemplateId = templateId/);
 });
@@ -34,6 +34,8 @@ test("app shell wires preview resize handles to layout width controls", async ()
 
   assert.match(source, /addEventListener\("pointerdown", handleResizePointerDown\)/);
   assert.match(source, /event\.target\.closest\("\[data-resize-field\]"\)/);
+  assert.match(source, /const dragContext = \{/);
+  assert.match(source, /isDragContextActive\(state, dragContext\)/);
   assert.match(source, /state = resizeColumn\(state, fieldId, startingWidth \+ moveEvent\.clientX - startX\)/);
   assert.match(source, /syncColumnWidthControl\(fieldId\)/);
   assert.match(source, /renderFieldControls\(\)/);
@@ -43,6 +45,12 @@ test("template save keeps the saved template id and name in current state", asyn
   const source = await appSource();
 
   assert.match(source, /currentTemplateId = saved\.id/);
-  assert.match(source, /templateId: saved\.id/);
-  assert.match(source, /name: saved\.title \|\| trimmedName/);
+  assert.match(source, /state = savedTemplateState\(state, saved, trimmedName\)/);
+});
+
+test("width input changes sync back to the clamped layout width", async () => {
+  const source = await appSource();
+
+  assert.match(source, /syncColumnWidthControl\(widthFieldId\)/);
+  assert.match(source, /input\.value = columnWidthValue\(state, fieldId\)/);
 });
