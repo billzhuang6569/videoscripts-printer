@@ -51,6 +51,8 @@ The printer consumes `imports/<session-id>/data.json`.
 - Do not add inferred commentary fields.
 - Do not remove source fields merely because they are empty.
 - Do not change the sequence of fields or rows unless the user explicitly asks.
+- Text-like fields support Markdown rendering in the web app. Preserve Markdown exactly if the source already contains it.
+- Multi-select fields must use string arrays. If the source is a single-select option, wrap the exact option label as a one-item array.
 
 ## Image Cell Values
 
@@ -66,10 +68,16 @@ The `write-session.mjs` script accepts absolute local image paths and copies the
 
 TODO fields may be a string, a primitive value, or an array of primitive values. Preserve the source wording exactly.
 
-Markdown-like source markers are allowed and rendered visually:
+Markdown task markers are allowed and rendered visually:
 
 ```json
 ["[ ] 确认场地", "[x] 准备脱敏屏幕"]
 ```
 
-If the source gives plain text such as `"确认场地"` or `"需提前准备 / 确认"`, keep that plain text and let the printer display it with an unchecked TODO box.
+If the source gives plain text such as `"确认场地"` or `"需提前准备 / 确认"`, keep that plain text. Do not invent `[ ]` unless the source clearly indicates a checklist item.
+
+## Local Persistence
+
+After import, the web app may persist user edits to `imports/<session-id>/data.json`. Treat those as local print-session edits only. The skill must not write them back to Feishu/Lark/Base/Sheets/docs unless the user explicitly invokes a source-system skill for that purpose.
+
+The web app persists layout and print presentation to `imports/<session-id>/layout.json`, including field labels/types/visibility/order, column widths, fixed or auto row height, grouping, sorting, orientation, and template choices.

@@ -128,7 +128,7 @@ async function main() {
   const dataPath = path.join(sessionDir, "data.json");
   await writeFile(dataPath, `${JSON.stringify(session, null, 2)}\n`, "utf8");
 
-  const url = `http://localhost:4173/?session=${encodeURIComponent(sessionId)}`;
+  const url = `http://localhost:4173/?session=${encodeURIComponent(sessionId)}&template=balanced-landscape.json`;
   console.log(
     JSON.stringify(
       {

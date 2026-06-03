@@ -5,24 +5,25 @@ description: Convert user-provided shooting-script content sources into sessions
 
 # 庄Sir的脚本打印器 Skill
 
-Create print sessions for the local web app. The skill is an adapter layer:
+Create print sessions for the built-in local HTML printer web app in this repository. The skill is an adapter layer:
 
 ```text
 source / other skill / native lark skill
--> exact session JSON
+-> exact initial session JSON
 -> imports/<session-id>/data.json
--> http://localhost:4173/?session=<session-id>
--> user adjusts layout and prints in the browser
+-> http://localhost:4173/?session=<session-id>&template=balanced-landscape.json
+-> user edits the local session if needed, adjusts layout, prints, or saves PDF
 ```
 
 ## Non-Negotiables
 
 - Do not rewrite, polish, translate, summarize, merge, split, or correct script content.
-- Do not edit source systems. This printer is read-only for content.
+- Do not edit source systems. The skill only creates a local printer session.
 - Preserve source row order, field order, field names, tags, captions, and cell text exactly.
 - Only transform structure: field IDs, field types, row IDs, and local asset paths.
 - If a value is ambiguous and would require interpretation, ask the user or keep it as text.
 - Use native lark skills for Feishu/Lark fetching and attachment download. This skill only consumes the fetched result.
+- The web app may let the user edit the local session after import. Those edits are user-controlled changes to `imports/<session-id>/data.json`, not changes to the source system.
 
 ## Workflow
 
@@ -34,7 +35,7 @@ source / other skill / native lark skill
 3. Preserve content exactly.
    - Text values stay text.
    - Multi-select/tag cells become string arrays without renaming tags.
-   - TODO/checklist cells become text or string arrays without rewriting item wording.
+   - TODO/checklist cells become Markdown-style task text or string arrays without rewriting item wording.
    - Image cells become arrays of `{ "path": "...", "caption": "..." }`.
 4. Write the session with:
 
@@ -53,17 +54,21 @@ source / other skill / native lark skill
 6. Open the returned URL in the browser, normally:
 
    ```text
-   http://localhost:4173/?session=<session-id>
+   http://localhost:4173/?session=<session-id>&template=balanced-landscape.json
    ```
 
-7. Tell the user that layout changes in the web UI are saved as `imports/<session-id>/layout.json`.
+7. Tell the user:
+   - imported source content was preserved when the initial session was created;
+   - local web edits are saved to `imports/<session-id>/data.json`;
+   - layout, grouping, sorting, field types, widths, row-height mode, and template adjustments are saved to `imports/<session-id>/layout.json`;
+   - printing/PDF happens from the browser preview.
 
 ## Field Type Rules
 
-- `text`: plain script values, including numbers and booleans.
-- `multiSelect`: source cells that are already tags/multi-select arrays.
+- `text`: plain script values, including numbers and booleans. Text cells support Markdown rendering in the web app.
+- `multiSelect`: source cells that are already tags/multi-select arrays, select/status/option fields, or clearly discrete fields such as `标签`, `状态`, `类型`, `分类`, `拍摄区域`. Preserve option labels exactly. If converting a single select value, wrap it as a one-item array.
 - `image`: source cells containing downloaded local image paths or image attachment objects.
-- `todo`: checklist, pending task, confirmation, preparation, or action-item cells. Use this when source field names or explicit source types indicate `TODO`, `待办`, `任务`, `检查项`, `需确认`, `需准备`, `准备事项`, `确认事项`, `action item`, or `checklist`.
+- `todo`: checklist, pending task, confirmation, preparation, or action-item cells. Use Markdown task markers when present (`[ ]`, `[x]`). Use this when source field names or explicit source types indicate `TODO`, `待办`, `任务`, `检查项`, `需确认`, `需准备`, `准备事项`, `确认事项`, `action item`, or `checklist`.
 
 When unsure between `text`, `multiSelect`, and `todo`, prefer `text` unless the source system explicitly marks the field type or the field name clearly indicates tags/checklist semantics.
 
@@ -76,4 +81,6 @@ When unsure between `text`, `multiSelect`, and `todo`, prefer `text` unless the 
 
 ## Persistence
 
-`data.json` is the immutable content snapshot. The web app saves user layout adjustments separately as `layout.json` in the same session folder. This lets users reopen past print sessions without changing the original script data.
+`data.json` is the initial content snapshot generated from the source. The web app can persist user edits to this local copy. It must not write those edits back to Feishu/Lark or any other source system.
+
+`layout.json` stores print presentation state: field labels/types/visibility/order, column widths, fixed/auto row height, grouping, sorting, paper orientation, and other template choices. This lets users reopen past print sessions with both local content edits and print layout restored.

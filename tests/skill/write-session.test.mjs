@@ -43,6 +43,7 @@ test("write-session creates a printer session and copies relative image assets",
   const copiedAsset = await readFile(path.join(root, "imports", "skill-copy", "assets", "ref.svg"), "utf8");
 
   assert.equal(result.sessionId, "skill-copy");
+  assert.equal(result.url, "http://localhost:4173/?session=skill-copy&template=balanced-landscape.json");
   assert.equal(sessionData.rows[0].cells.shot_no, "01");
   assert.deepEqual(sessionData.rows[0].cells.todo, ["[ ] 确认场地", "[x] 准备脱敏屏幕"]);
   assert.deepEqual(sessionData.rows[0].cells.reference, [{ path: "assets/ref.svg", caption: "原 caption 照抄" }]);
