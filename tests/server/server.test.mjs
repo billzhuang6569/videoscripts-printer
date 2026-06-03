@@ -104,15 +104,19 @@ test("server loads and saves validated templates", async (t) => {
       name: "Server Template",
       paper: { size: "A4", orientation: "portrait" },
       table: { rowHeight: 80, avoidRowPageBreak: true },
-      columns: [{ fieldId: "shot_no", label: "镜头号", visible: true, width: 88 }]
+      columns: [{ fieldId: "shot_no", label: "镜次", visible: true, width: 88 }]
     })
   });
   const savedBody = await saved.json();
+  const reloaded = await fetch(`${base}/api/templates/${savedBody.id}`).then((res) => res.json());
 
   assert.equal(loaded.name, "均衡横版");
   assert.equal(invalid.status, 422);
   assert.equal(saved.status, 201);
   assert.equal(savedBody.id, "server-template.json");
+  assert.equal(reloaded.name, "Server Template");
+  assert.equal(reloaded.columns[0].label, "镜次");
+  assert.equal(reloaded.columns[0].width, 88);
 });
 
 test("server rejects malformed percent-encoded paths as client errors", async (t) => {

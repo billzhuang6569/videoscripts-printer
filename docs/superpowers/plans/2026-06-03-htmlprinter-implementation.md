@@ -1807,6 +1807,15 @@ Expected: commit succeeds.
 
 ## Task 8: Column Width Dragging And Template Persistence
 
+**Status:** Completed during Task 7 hardening and verified in the Task 8 audit.
+
+Audit note:
+- Column order controls are wired in `public/js/app.js` through `data-move-field` buttons and `moveColumn`.
+- Width number inputs call `resizeColumn` and immediately re-render the preview.
+- Preview header resize handles are rendered by `renderPrintTable`, drag through pointer events, and sync the matching width input while dragging.
+- Template saving posts `toTemplate(state.layout, trimmedName)` to `POST /api/templates`, refreshes the template list, selects the saved id, and keeps the saved title in state.
+- Tests cover move/resize/template export state, preview resize-handle rendering and wiring, API POST behavior, saved-template state source wiring, and server-side save/reload persistence.
+
 **Files:**
 - Modify: `public/js/app.js`
 - Modify: `public/styles/app.css`
@@ -1815,7 +1824,7 @@ Expected: commit succeeds.
 - Modify: `tests/frontend/state-layout.test.mjs`
 - Modify: `tests/frontend/render.test.mjs`
 
-- [ ] **Step 1: Add width-state test**
+- [x] **Step 1: Add width-state test**
 
 Append to `tests/frontend/state-layout.test.mjs`:
 
@@ -1831,7 +1840,7 @@ test("moveColumn reorders layout columns without changing session fields", () =>
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -1841,7 +1850,9 @@ node --test tests/frontend/state-layout.test.mjs
 
 Expected: FAIL because `moveColumn` is not exported.
 
-- [ ] **Step 3: Add moveColumn state function**
+Audit result: this red step belongs to the original plan. By the Task 8 audit, `moveColumn` was already exported and covered.
+
+- [x] **Step 3: Add moveColumn state function**
 
 Append to `public/js/state.js`:
 
@@ -1857,7 +1868,7 @@ export function moveColumn(state, fieldId, direction) {
 }
 ```
 
-- [ ] **Step 4: Add resize controls to field list**
+- [x] **Step 4: Add resize controls to field list**
 
 Modify `public/js/app.js` imports:
 
@@ -1924,7 +1935,7 @@ row.append(checkbox, label, type, width, up, down);
 elements.fieldList.append(row);
 ```
 
-- [ ] **Step 5: Update field item CSS**
+- [x] **Step 5: Update field item CSS**
 
 Replace `.field-item` rule in `public/styles/app.css`:
 
@@ -1959,7 +1970,7 @@ Add:
 }
 ```
 
-- [ ] **Step 6: Run frontend tests**
+- [x] **Step 6: Run frontend tests**
 
 Append to `tests/frontend/render.test.mjs`:
 
@@ -1979,7 +1990,7 @@ test("table headers include resize handles for visible columns", () => {
 });
 ```
 
-- [ ] **Step 7: Add resize handles to preview headers**
+- [x] **Step 7: Add resize handles to preview headers**
 
 In `public/js/render.js`, replace the `header` constant inside `renderPrintTable()` with:
 
@@ -1992,7 +2003,7 @@ const header = columns.map((column) => `
 `).join("");
 ```
 
-- [ ] **Step 8: Wire pointer dragging in the preview**
+- [x] **Step 8: Wire pointer dragging in the preview**
 
 Add this function to `public/js/app.js`:
 
@@ -2031,7 +2042,7 @@ In `renderPaper()`, add this call after setting `elements.paper.innerHTML` and t
 bindColumnResize();
 ```
 
-- [ ] **Step 9: Style resize handles**
+- [x] **Step 9: Style resize handles**
 
 Add to `public/styles/app.css`:
 
@@ -2062,7 +2073,7 @@ Add to `public/styles/app.css`:
 }
 ```
 
-- [ ] **Step 10: Run frontend tests**
+- [x] **Step 10: Run frontend tests**
 
 Run:
 
@@ -2072,7 +2083,7 @@ node --test tests/frontend/state-layout.test.mjs tests/frontend/render.test.mjs
 
 Expected: PASS.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 Run:
 
