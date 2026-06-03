@@ -106,6 +106,7 @@ test("field controls allow changing render type per column", async () => {
   const source = await appSource();
 
   assert.match(source, /FIELD_TYPES\.map/);
+  assert.match(source, /todo: "TODO"/);
   assert.match(source, /data-field-type="\$\{escapeAttr\(column\.fieldId\)\}"/);
   assert.match(source, /const typeFieldId = event\.target\.dataset\.fieldType/);
   assert.match(source, /state = setColumnType\(state, typeFieldId, event\.target\.value\)/);

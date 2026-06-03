@@ -14,7 +14,7 @@ const state = {
     name: "均衡横版脚本表",
     columns: [
       { fieldId: "shot_no", width: 64 },
-      { fieldId: "reference", width: 260 }
+      { fieldId: "reference", width: 260.8 }
     ]
   }
 };
@@ -49,6 +49,6 @@ test("savedTemplateState keeps the saved template id and visible layout name tog
 });
 
 test("columnWidthValue returns the layout width used for synced inputs", () => {
-  assert.equal(columnWidthValue(state, "reference"), "260");
+  assert.equal(columnWidthValue(state, "reference"), "261");
   assert.equal(columnWidthValue(state, "missing"), "");
 });

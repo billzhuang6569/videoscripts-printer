@@ -1,4 +1,4 @@
-export const FIELD_TYPES = Object.freeze(["text", "multiSelect", "image"]);
+export const FIELD_TYPES = Object.freeze(["text", "multiSelect", "image", "todo"]);
 export const PAPER_SIZES = Object.freeze(["A4"]);
 export const PAPER_ORIENTATIONS = Object.freeze(["landscape", "portrait"]);
 

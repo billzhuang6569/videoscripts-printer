@@ -78,6 +78,9 @@ test("default templates follow shared schema invariants and sample fields", asyn
       assert.ok(fieldIds.has(column.fieldId), `${file} column fieldId should exist in sample data: ${column.fieldId}`);
       assert.equal(templateFieldIds.has(column.fieldId), false, `${file} should not duplicate column fieldId: ${column.fieldId}`);
       templateFieldIds.add(column.fieldId);
+      if (column.type !== undefined) {
+        assert.ok(FIELD_TYPES.includes(column.type), `${file} column type should be supported: ${column.type}`);
+      }
       assert.ok(
         Number.isFinite(column.width) && column.width >= MIN_COLUMN_WIDTH && column.width <= MAX_COLUMN_WIDTH,
         `${file} column width should be between ${MIN_COLUMN_WIDTH} and ${MAX_COLUMN_WIDTH}: ${column.fieldId}`

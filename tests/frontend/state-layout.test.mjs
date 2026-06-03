@@ -60,11 +60,12 @@ test("applyTemplateToFields applies template columns and appends missing fields"
 test("applyTemplateToFields lets templates override field render type", () => {
   const columns = applyTemplateToFields(fields, {
     ...template,
-    columns: [{ fieldId: "voiceover", label: "旁白", type: "multiSelect", visible: true, width: 180 }]
+    columns: [{ fieldId: "voiceover", label: "旁白", type: "todo", visible: true, width: 180.6 }]
   });
 
   assert.equal(columns[0].fieldId, "voiceover");
-  assert.equal(columns[0].type, "multiSelect");
+  assert.equal(columns[0].type, "todo");
+  assert.equal(columns[0].width, 181);
 });
 
 test("public modules do not import from src-relative paths", async () => {
@@ -105,6 +106,15 @@ test("applyTemplateToFields clamps template widths", () => {
 
   assert.equal(columns[0].width, MIN_COLUMN_WIDTH);
   assert.equal(columns[1].width, MAX_COLUMN_WIDTH);
+});
+
+test("applyTemplateToFields falls back when template type is unsupported", () => {
+  const columns = applyTemplateToFields(fields, {
+    ...template,
+    columns: [{ fieldId: "voiceover", label: "旁白", type: "number", visible: true, width: 180 }]
+  });
+
+  assert.equal(columns[0].type, "text");
 });
 
 test("state changes return new layout objects without mutating session data", () => {

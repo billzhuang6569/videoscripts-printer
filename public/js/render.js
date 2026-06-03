@@ -36,6 +36,36 @@ function renderTags(value) {
   return `<div class="cell-tags">${tags.map((tag) => `<span class="cell-tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
 }
 
+function normalizeTodoItems(value) {
+  if (Array.isArray(value)) return value;
+  if (value == null || value === EMPTY) return [];
+  return String(value)
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function parseTodoItem(value) {
+  const text = String(value ?? EMPTY);
+  const match = text.match(/^(?:[-*]\s*)?\[( |x|X)\]\s*(.*)$/u);
+  if (!match) return { checked: false, text };
+  return { checked: match[1].toLowerCase() === "x", text: match[2] };
+}
+
+function renderTodo(value) {
+  const items = normalizeTodoItems(value).map(parseTodoItem).filter((item) => item.text.length > 0);
+  if (items.length === 0) return EMPTY;
+
+  const renderedItems = items
+    .map((item) => {
+      const checkedClass = item.checked ? " is-checked" : EMPTY;
+      return `<div class="cell-todo-item${checkedClass}"><span class="cell-todo-box" aria-hidden="true"></span><span class="cell-todo-text">${escapeHtml(item.text)}</span></div>`;
+    })
+    .join("");
+
+  return `<div class="cell-todo-list">${renderedItems}</div>`;
+}
+
 function splitTagParts(value) {
   return String(value ?? EMPTY)
     .split(/\s*\/\s*/)
@@ -92,6 +122,7 @@ function renderImages(value, sessionId) {
 export function renderCellValue(type, value, sessionId) {
   if (type === "multiSelect") return renderTags(value);
   if (type === "image") return renderImages(value, sessionId);
+  if (type === "todo") return renderTodo(value);
   const colorTaggedText = renderColorTaggedText(value);
   if (colorTaggedText) return colorTaggedText;
   return `<span class="cell-text">${escapeHtml(value)}</span>`;

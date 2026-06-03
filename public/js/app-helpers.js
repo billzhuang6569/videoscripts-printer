@@ -24,5 +24,5 @@ export function savedTemplateState(state, saved, name) {
 
 export function columnWidthValue(state, fieldId) {
   const column = state?.layout?.columns?.find((item) => item.fieldId === fieldId);
-  return column ? String(column.width) : "";
+  return column ? String(Math.round(Number(column.width))) : "";
 }

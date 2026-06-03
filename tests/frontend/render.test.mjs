@@ -59,6 +59,17 @@ test("renderCellValue renders multi-select values as compact tags", () => {
   assert.doesNotMatch(html, /<input\b/i);
 });
 
+test("renderCellValue renders todo values with markdown-like boxes", () => {
+  const html = renderCellValue("todo", "[ ] 确认场地\n[x] 准备脱敏屏幕", "sample");
+
+  assert.match(html, /class="cell-todo-list"/);
+  assert.match(html, /class="cell-todo-item"><span class="cell-todo-box"/);
+  assert.match(html, /class="cell-todo-text">确认场地<\/span>/);
+  assert.match(html, /class="cell-todo-item is-checked"/);
+  assert.match(html, /class="cell-todo-text">准备脱敏屏幕<\/span>/);
+  assert.doesNotMatch(html, /\[ \]|\[x\]/);
+});
+
 test("renderCellValue turns colored label prefixes into rounded text tags", () => {
   const html = renderCellValue("text", "🟦🟩 前台 / 工位 / 🟧 荣誉墙", "sample");
 

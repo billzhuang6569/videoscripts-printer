@@ -18,6 +18,7 @@ The printer consumes `imports/<session-id>/data.json`.
     { "id": "visual", "name": "画面内容", "type": "text" },
     { "id": "reference", "name": "画面参考/分镜", "type": "image" },
     { "id": "notes", "name": "备注", "type": "text" },
+    { "id": "todo", "name": "待办", "type": "todo" },
     { "id": "tags", "name": "标签", "type": "multiSelect" }
   ],
   "rows": [
@@ -31,6 +32,7 @@ The printer consumes `imports/<session-id>/data.json`.
           { "path": "/absolute/local/downloaded-image.png", "caption": "原 caption 照抄" }
         ],
         "notes": "",
+        "todo": ["[ ] 原文照抄", "[x] 原文照抄"],
         "tags": ["外景", "重点"]
       }
     }
@@ -42,7 +44,7 @@ The printer consumes `imports/<session-id>/data.json`.
 
 - `field.id`: stable ASCII-ish identifier. It may be generated from the field name, but it must not alter `field.name`.
 - `field.name`: exact source column/display name.
-- `field.type`: one of `text`, `multiSelect`, `image`.
+- `field.type`: one of `text`, `multiSelect`, `image`, `todo`.
 - `rows[].id`: stable generated row id is allowed.
 - `rows[].cells`: keys must match declared fields.
 - Empty source cells should be represented as `""`, `[]`, or `null` according to field type.
@@ -59,3 +61,15 @@ Image fields must be arrays. Each item:
 ```
 
 The `write-session.mjs` script accepts absolute local image paths and copies them into the session `assets/` folder.
+
+## TODO Cell Values
+
+TODO fields may be a string, a primitive value, or an array of primitive values. Preserve the source wording exactly.
+
+Markdown-like source markers are allowed and rendered visually:
+
+```json
+["[ ] 确认场地", "[x] 准备脱敏屏幕"]
+```
+
+If the source gives plain text such as `"确认场地"` or `"需提前准备 / 确认"`, keep that plain text and let the printer display it with an unchecked TODO box.

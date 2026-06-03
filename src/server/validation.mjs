@@ -19,6 +19,10 @@ function isRenderablePrimitive(value) {
   return value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value);
 }
 
+function isTodoValue(value) {
+  return isRenderablePrimitive(value) || (Array.isArray(value) && value.every(isRenderablePrimitive));
+}
+
 function normalizeAllowedExtensions(extensions) {
   return new Set(
     extensions.map((extension) => {
@@ -107,6 +111,10 @@ export function validateSessionData(data, options = {}) {
 
       if (type === "multiSelect" && (!Array.isArray(value) || value.some((item) => typeof item !== "string"))) {
         errors.push(`第 ${rowIndex + 1} 行字段 ${fieldId} 必须是字符串数组`);
+      }
+
+      if (type === "todo" && !isTodoValue(value)) {
+        errors.push(`第 ${rowIndex + 1} 行字段 ${fieldId} 必须是可渲染的待办值（文本、数字、布尔值、空值或这些值组成的数组）`);
       }
 
       if (type === "image") {

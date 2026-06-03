@@ -133,7 +133,7 @@ function createFieldRow(column, index) {
   const field = fieldById(column.fieldId);
   const visibilityLabel = column.label || field?.name || column.fieldId;
   const typeOptions = FIELD_TYPES.map((fieldType) => {
-    const label = { text: "文本", multiSelect: "标签", image: "图片" }[fieldType] ?? fieldType;
+    const label = { text: "文本", multiSelect: "标签", image: "图片", todo: "TODO" }[fieldType] ?? fieldType;
     return `<option value="${escapeAttr(fieldType)}"${column.type === fieldType ? " selected" : ""}>${escapeHtml(label)}</option>`;
   }).join("");
 

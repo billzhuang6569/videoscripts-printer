@@ -19,7 +19,7 @@ const DEFAULT_PAPER = Object.freeze({
 export function clampColumnWidth(width) {
   const numeric = Number(width);
   if (!Number.isFinite(numeric)) return MIN_COLUMN_WIDTH;
-  return Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, numeric));
+  return Math.round(Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, numeric)));
 }
 
 export function clampRowHeight(rowHeight) {
@@ -29,6 +29,7 @@ export function clampRowHeight(rowHeight) {
 }
 
 function defaultWidthForField(field) {
+  if (field.type === "todo") return 220;
   return field.type === "image" ? 260 : 180;
 }
 

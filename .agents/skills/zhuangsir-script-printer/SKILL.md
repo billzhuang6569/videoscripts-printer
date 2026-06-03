@@ -34,6 +34,7 @@ source / other skill / native lark skill
 3. Preserve content exactly.
    - Text values stay text.
    - Multi-select/tag cells become string arrays without renaming tags.
+   - TODO/checklist cells become text or string arrays without rewriting item wording.
    - Image cells become arrays of `{ "path": "...", "caption": "..." }`.
 4. Write the session with:
 
@@ -62,8 +63,9 @@ source / other skill / native lark skill
 - `text`: plain script values, including numbers and booleans.
 - `multiSelect`: source cells that are already tags/multi-select arrays.
 - `image`: source cells containing downloaded local image paths or image attachment objects.
+- `todo`: checklist, pending task, confirmation, preparation, or action-item cells. Use this when source field names or explicit source types indicate `TODO`, `待办`, `任务`, `检查项`, `需确认`, `需准备`, `准备事项`, `确认事项`, `action item`, or `checklist`.
 
-When unsure between `text` and `multiSelect`, prefer `text` unless the source system explicitly marks the field as multi-select/tags.
+When unsure between `text`, `multiSelect`, and `todo`, prefer `text` unless the source system explicitly marks the field type or the field name clearly indicates tags/checklist semantics.
 
 ## Local Asset Rules
 

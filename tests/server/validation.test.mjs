@@ -7,7 +7,8 @@ const validSession = {
   fields: [
     { id: "shot_no", name: "镜头号", type: "text" },
     { id: "tags", name: "标签", type: "multiSelect" },
-    { id: "reference", name: "参考", type: "image" }
+    { id: "reference", name: "参考", type: "image" },
+    { id: "todo", name: "待办", type: "todo" }
   ],
   rows: [
     {
@@ -15,7 +16,8 @@ const validSession = {
       cells: {
         shot_no: "01",
         tags: ["重点"],
-        reference: [{ path: "assets/shot.svg", caption: "图" }]
+        reference: [{ path: "assets/shot.svg", caption: "图" }],
+        todo: ["[ ] 确认场地", "[x] 准备脱敏屏幕"]
       }
     }
   ]
@@ -54,6 +56,20 @@ test("multiSelect must be string array", () => {
   const session = structuredClone(validSession);
   session.rows[0].cells.tags = "重点";
   assert.match(validateSessionData(session).errors[0], /必须是字符串数组/);
+});
+
+test("todo fields accept primitive values or arrays of primitive values", () => {
+  for (const value of ["[ ] 确认场地", 1, true, null, undefined, ["[ ] 确认场地", "[x] 准备脱敏屏幕"]]) {
+    const session = structuredClone(validSession);
+    session.rows[0].cells.todo = value;
+    assert.deepEqual(validateSessionData(session).errors, []);
+  }
+});
+
+test("todo fields reject objects", () => {
+  const session = structuredClone(validSession);
+  session.rows[0].cells.todo = [{ text: "确认场地" }];
+  assert.match(validateSessionData(session).errors[0], /待办值/);
 });
 
 test("text fields accept renderable primitives", () => {
@@ -137,7 +153,7 @@ test("valid template passes", () => {
 
 test("template column type is optional but validated when present", () => {
   const typedTemplate = structuredClone(validTemplate);
-  typedTemplate.columns[0].type = "multiSelect";
+  typedTemplate.columns[0].type = "todo";
   assert.deepEqual(validateTemplate(typedTemplate).errors, []);
 
   typedTemplate.columns[0].type = "number";

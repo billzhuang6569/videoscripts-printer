@@ -20,6 +20,7 @@ test("write-session creates a printer session and copies relative image assets",
     source: { type: "direct", name: "test-source" },
     fields: [
       { id: "shot_no", name: "镜头号", type: "text" },
+      { id: "todo", name: "待办", type: "todo" },
       { id: "reference", name: "画面参考/分镜", type: "image" }
     ],
     rows: [
@@ -27,6 +28,7 @@ test("write-session creates a printer session and copies relative image assets",
         id: "row_001",
         cells: {
           shot_no: "01",
+          todo: ["[ ] 确认场地", "[x] 准备脱敏屏幕"],
           reference: [{ path: "assets/ref.svg", caption: "原 caption 照抄" }]
         }
       }
@@ -42,6 +44,7 @@ test("write-session creates a printer session and copies relative image assets",
 
   assert.equal(result.sessionId, "skill-copy");
   assert.equal(sessionData.rows[0].cells.shot_no, "01");
+  assert.deepEqual(sessionData.rows[0].cells.todo, ["[ ] 确认场地", "[x] 准备脱敏屏幕"]);
   assert.deepEqual(sessionData.rows[0].cells.reference, [{ path: "assets/ref.svg", caption: "原 caption 照抄" }]);
   assert.equal(copiedAsset, "<svg xmlns=\"http://www.w3.org/2000/svg\" />");
 });
