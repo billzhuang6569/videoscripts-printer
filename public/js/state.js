@@ -1,3 +1,4 @@
+import { DEFAULT_SORT_DIRECTION, SORT_DIRECTIONS } from "./schema.js";
 import { clampColumnWidth, clampRowHeight, createLayout } from "./layout.js";
 
 function cloneLayout(layout) {
@@ -5,9 +6,14 @@ function cloneLayout(layout) {
     ...layout,
     paper: { ...layout.paper },
     table: { ...layout.table },
+    organization: { ...(layout.organization ?? {}) },
     columns: layout.columns.map((column) => ({ ...column })),
     missingColumns: (layout.missingColumns ?? []).map((column) => ({ ...column }))
   };
+}
+
+function isLayoutField(state, fieldId) {
+  return typeof fieldId === "string" && state.layout.columns.some((column) => column.fieldId === fieldId);
 }
 
 function updateColumn(state, fieldId, updater) {
@@ -84,11 +90,43 @@ export function moveColumn(state, fieldId, nextIndex) {
   return { ...state, layout };
 }
 
+export function setGroupByField(state, fieldId) {
+  const nextFieldId = isLayoutField(state, fieldId) ? fieldId : "";
+  if ((state.layout.organization?.groupByFieldId ?? "") === nextFieldId) return state;
+
+  const layout = cloneLayout(state.layout);
+  layout.organization.groupByFieldId = nextFieldId;
+  return { ...state, layout };
+}
+
+export function setSortByField(state, fieldId) {
+  const nextFieldId = isLayoutField(state, fieldId) ? fieldId : "";
+  if ((state.layout.organization?.sortByFieldId ?? "") === nextFieldId) return state;
+
+  const layout = cloneLayout(state.layout);
+  layout.organization.sortByFieldId = nextFieldId;
+  return { ...state, layout };
+}
+
+export function setSortDirection(state, direction) {
+  const nextDirection = SORT_DIRECTIONS.includes(direction) ? direction : DEFAULT_SORT_DIRECTION;
+  if ((state.layout.organization?.sortDirection ?? DEFAULT_SORT_DIRECTION) === nextDirection) return state;
+
+  const layout = cloneLayout(state.layout);
+  layout.organization.sortDirection = nextDirection;
+  return { ...state, layout };
+}
+
 export function toTemplate(layout, name = layout.name) {
   return {
     name,
     paper: { ...layout.paper },
     table: { ...layout.table },
+    organization: {
+      groupByFieldId: layout.organization?.groupByFieldId ?? "",
+      sortByFieldId: layout.organization?.sortByFieldId ?? "",
+      sortDirection: layout.organization?.sortDirection ?? DEFAULT_SORT_DIRECTION
+    },
     columns: layout.columns.map(({ fieldId, label, type, visible, width }) => ({
       fieldId,
       label,

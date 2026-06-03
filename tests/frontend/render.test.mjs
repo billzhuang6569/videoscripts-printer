@@ -131,6 +131,35 @@ test("renderPrintTable uses layout column type overrides", () => {
   assert.match(html, /class="cell-tag">口播标签<\/span>/);
 });
 
+test("renderPrintTable groups rows and sorts them naturally", () => {
+  const layout = createLayout(fields, {
+    ...template,
+    organization: {
+      groupByFieldId: "tags",
+      sortByFieldId: "shot_no",
+      sortDirection: "asc"
+    }
+  });
+  const html = renderPrintTable(
+    {
+      ...session,
+      rows: [
+        { id: "row_010", cells: { shot_no: "10", voiceover: "第三", tags: ["室内"] } },
+        { id: "row_002", cells: { shot_no: "2", voiceover: "第二", tags: ["外景"] } },
+        { id: "row_001", cells: { shot_no: "1", voiceover: "第一", tags: ["室内"] } }
+      ]
+    },
+    layout,
+    "sample-shoot"
+  );
+
+  assert.match(html, /class="print-group-row"/);
+  assert.match(html, /<span class="print-group-label">室内<\/span><span class="print-group-count">2 条<\/span>/);
+  assert.match(html, /<span class="print-group-label">外景<\/span><span class="print-group-count">1 条<\/span>/);
+  assert.ok(html.indexOf('data-row-id="row_001"') < html.indexOf('data-row-id="row_010"'));
+  assert.ok(html.indexOf('data-row-id="row_010"') < html.indexOf('data-row-id="row_002"'));
+});
+
 test("render module stays browser-served and read-only in source", async () => {
   const source = await readFile(new URL("../../public/js/render.js", import.meta.url), "utf8");
 

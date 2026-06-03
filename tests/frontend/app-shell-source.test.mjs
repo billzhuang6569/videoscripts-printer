@@ -112,3 +112,15 @@ test("field controls allow changing render type per column", async () => {
   assert.match(source, /state = setColumnType\(state, typeFieldId, event\.target\.value\)/);
   assert.match(source, /scheduleSessionLayoutSave\(\)/);
 });
+
+test("app shell supports grouping and sorting controls", async () => {
+  const source = await appSource();
+
+  assert.match(source, /data-group-field/);
+  assert.match(source, /data-sort-field/);
+  assert.match(source, /data-sort-direction-button/);
+  assert.match(source, /state = setGroupByField\(state, event\.target\.value\)/);
+  assert.match(source, /state = setSortByField\(state, event\.target\.value\)/);
+  assert.match(source, /state = setSortDirection\(state, button\.dataset\.sortDirectionButton\)/);
+  assert.match(source, /renderOrganizationControls\(\)/);
+});

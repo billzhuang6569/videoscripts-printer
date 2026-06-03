@@ -2,13 +2,15 @@ import {
   DEFAULT_PAPER_ORIENTATION,
   DEFAULT_PAPER_SIZE,
   DEFAULT_ROW_HEIGHT,
+  DEFAULT_SORT_DIRECTION,
   FIELD_TYPES,
   MAX_COLUMN_WIDTH,
   MAX_ROW_HEIGHT,
   MIN_COLUMN_WIDTH,
   MIN_ROW_HEIGHT,
   PAPER_ORIENTATIONS,
-  PAPER_SIZES
+  PAPER_SIZES,
+  SORT_DIRECTIONS
 } from "./schema.js";
 
 const DEFAULT_PAPER = Object.freeze({
@@ -41,6 +43,27 @@ function normalizePaper(paper = {}) {
   return {
     size: PAPER_SIZES.includes(paper.size) ? paper.size : DEFAULT_PAPER.size,
     orientation: PAPER_ORIENTATIONS.includes(paper.orientation) ? paper.orientation : DEFAULT_PAPER.orientation
+  };
+}
+
+export function normalizeOrganization(organization = {}, fields = []) {
+  const fieldIds = new Set(fields.map((field) => field.id));
+  const groupByFieldId =
+    typeof organization.groupByFieldId === "string" && fieldIds.has(organization.groupByFieldId)
+      ? organization.groupByFieldId
+      : "";
+  const sortByFieldId =
+    typeof organization.sortByFieldId === "string" && fieldIds.has(organization.sortByFieldId)
+      ? organization.sortByFieldId
+      : "";
+  const sortDirection = SORT_DIRECTIONS.includes(organization.sortDirection)
+    ? organization.sortDirection
+    : DEFAULT_SORT_DIRECTION;
+
+  return {
+    groupByFieldId,
+    sortByFieldId,
+    sortDirection
   };
 }
 
@@ -105,6 +128,7 @@ export function createLayout(fields, template = {}) {
       rowHeight: clampRowHeight(table.rowHeight ?? DEFAULT_ROW_HEIGHT),
       avoidRowPageBreak: table.avoidRowPageBreak !== false
     },
+    organization: normalizeOrganization(template.organization, fields),
     columns: applyTemplateToFields(fields, template),
     missingColumns: missingTemplateColumns(fields, template)
   };

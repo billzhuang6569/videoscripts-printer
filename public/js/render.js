@@ -1,6 +1,12 @@
 import { visibleColumns } from "./layout.js";
 
 const EMPTY = "";
+const EMPTY_GROUP_LABEL = "未填写";
+const GROUP_COUNT_SUFFIX = "条";
+const NATURAL_COLLATOR = new Intl.Collator("zh-CN", {
+  numeric: true,
+  sensitivity: "base"
+});
 const COLOR_MARKERS = Object.freeze({
   "🟦": "blue",
   "🟩": "green",
@@ -137,6 +143,92 @@ function columnWidth(column) {
   return Number.isFinite(width) && width > 0 ? width : null;
 }
 
+function stripTodoMarker(value) {
+  return String(value ?? EMPTY).replace(/^(?:[-*]\s*)?\[(?: |x|X)\]\s*/u, "");
+}
+
+function displayPartFromValue(value) {
+  if (value == null) return EMPTY;
+  if (typeof value === "object") {
+    if (typeof value.caption === "string" && value.caption.length > 0) return value.caption;
+    if (typeof value.path === "string" && value.path.length > 0) return value.path;
+    return EMPTY;
+  }
+  return stripTodoMarker(value);
+}
+
+function displayValue(value) {
+  const parts = normalizeList(value)
+    .map(displayPartFromValue)
+    .map((part) => String(part).replace(/[🟦🟩🟧🟪🟨]/gu, "").trim())
+    .filter((part) => part.length > 0);
+
+  return parts.join(" / ");
+}
+
+function organizationColumn(layout, fieldId) {
+  if (!fieldId) return null;
+  return layout.columns.find((column) => column.fieldId === fieldId) ?? null;
+}
+
+function compareRows(left, right, sortColumn, sortDirection) {
+  const leftValue = displayValue(left.row.cells?.[sortColumn.fieldId]);
+  const rightValue = displayValue(right.row.cells?.[sortColumn.fieldId]);
+  const direction = sortDirection === "desc" ? -1 : 1;
+  const compared = NATURAL_COLLATOR.compare(leftValue, rightValue);
+
+  if (compared !== 0) return compared * direction;
+  return left.index - right.index;
+}
+
+function arrangedRowGroups(session, layout) {
+  const organization = layout.organization ?? {};
+  const sortColumn = organizationColumn(layout, organization.sortByFieldId);
+  const groupColumn = organizationColumn(layout, organization.groupByFieldId);
+  const rows = (session.rows ?? []).map((row, index) => ({ row, index }));
+
+  if (sortColumn) {
+    rows.sort((left, right) => compareRows(left, right, sortColumn, organization.sortDirection));
+  }
+
+  if (!groupColumn) {
+    return [{ key: EMPTY, label: EMPTY, rows: rows.map((item) => item.row), grouped: false }];
+  }
+
+  const groups = [];
+  const groupsByKey = new Map();
+
+  for (const item of rows) {
+    const label = displayValue(item.row.cells?.[groupColumn.fieldId]) || EMPTY_GROUP_LABEL;
+    const key = label;
+    let group = groupsByKey.get(key);
+    if (!group) {
+      group = { key, label, rows: [], grouped: true };
+      groupsByKey.set(key, group);
+      groups.push(group);
+    }
+    group.rows.push(item.row);
+  }
+
+  return groups;
+}
+
+function renderGroupHeader(group, columnCount) {
+  return `<tr class="print-group-row" data-group-key="${escapeHtml(group.key)}"><th scope="rowgroup" colspan="${Math.max(1, columnCount)}"><span class="print-group-label">${escapeHtml(group.label)}</span><span class="print-group-count">${group.rows.length} ${GROUP_COUNT_SUFFIX}</span></th></tr>`;
+}
+
+function renderDataRow(row, columns, fieldTypes, rowStyle, sessionId) {
+  const cells = columns
+    .map((column) => {
+      const type = column.type ?? fieldTypes.get(column.fieldId) ?? "text";
+      const value = row.cells?.[column.fieldId];
+      return `<td data-field="${escapeHtml(column.fieldId)}">${renderCellValue(type, value, sessionId)}</td>`;
+    })
+    .join("");
+
+  return `<tr data-row-id="${escapeHtml(row.id)}"${rowStyle}>${cells}</tr>`;
+}
+
 export function renderPrintTable(session, layout, sessionId) {
   const columns = visibleColumns(layout);
   const fieldTypes = fieldTypesById(session);
@@ -159,17 +251,11 @@ export function renderPrintTable(session, layout, sessionId) {
     )
     .join("");
 
-  const rows = (session.rows ?? [])
-    .map((row) => {
-      const cells = columns
-        .map((column) => {
-          const type = column.type ?? fieldTypes.get(column.fieldId) ?? "text";
-          const value = row.cells?.[column.fieldId];
-          return `<td data-field="${escapeHtml(column.fieldId)}">${renderCellValue(type, value, sessionId)}</td>`;
-        })
-        .join("");
-
-      return `<tr data-row-id="${escapeHtml(row.id)}"${rowStyle}>${cells}</tr>`;
+  const rows = arrangedRowGroups(session, layout)
+    .map((group) => {
+      const groupHeader = group.grouped ? renderGroupHeader(group, columns.length) : EMPTY;
+      const dataRows = group.rows.map((row) => renderDataRow(row, columns, fieldTypes, rowStyle, sessionId)).join("");
+      return `${groupHeader}${dataRows}`;
     })
     .join("");
 

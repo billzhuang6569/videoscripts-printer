@@ -111,6 +111,7 @@ button:disabled {
 
 .toolbar-field span,
 .range-field span,
+.select-field span,
 .field-label span,
 .field-meta label span {
   color: var(--muted);
@@ -120,6 +121,7 @@ button:disabled {
 }
 
 .toolbar-field select,
+.select-field select,
 .field-label input,
 .field-meta input,
 .field-meta select {
@@ -137,6 +139,7 @@ button:disabled {
 }
 
 .toolbar-field select:focus,
+.select-field select:focus,
 .field-label input:focus,
 .field-meta input:focus,
 .field-meta select:focus,
@@ -244,6 +247,31 @@ button:focus-visible {
 .range-field {
   display: grid;
   gap: 8px;
+}
+
+.organization-section {
+  display: grid;
+  gap: 12px;
+}
+
+.organization-section .section-heading {
+  margin-bottom: 0;
+}
+
+.select-field {
+  display: grid;
+  gap: 6px;
+}
+
+.select-field select {
+  width: 100%;
+  padding: 0 30px 0 10px;
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.sort-direction-control {
+  width: 100%;
 }
 
 .range-field input {
@@ -550,6 +578,34 @@ button:focus-visible {
 .print-table td {
   padding: 8px 9px;
   background: #fff;
+}
+
+.print-group-row th {
+  border-color: #bdccc9;
+  padding: 7px 9px;
+  background: #e3eeec;
+  color: #263532;
+  font-weight: 780;
+  break-after: avoid;
+  page-break-after: avoid;
+  display: table-cell;
+  overflow-wrap: anywhere;
+}
+
+.print-group-row th > span {
+  vertical-align: middle;
+}
+
+.print-group-label {
+  margin-right: 8px;
+  overflow-wrap: anywhere;
+}
+
+.print-group-count {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .print-header-label,

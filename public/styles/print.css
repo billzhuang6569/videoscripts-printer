@@ -70,6 +70,26 @@ body {
   font-weight: 800;
 }
 
+.print-table .print-group-row th {
+  padding: 4.5pt 6pt;
+  background: #dce8e6 !important;
+  color: #111;
+  font-weight: 800;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.print-group-label {
+  margin-right: 6pt;
+}
+
+.print-group-count {
+  color: #4f5d5a;
+  font-size: 8.5pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .print-table td {
   padding: 5pt 6pt;
   background: #fff !important;

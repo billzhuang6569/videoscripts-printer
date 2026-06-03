@@ -7,7 +7,10 @@ import {
   renameColumn,
   resizeColumn,
   setColumnType,
+  setGroupByField,
   setRowHeight,
+  setSortByField,
+  setSortDirection,
   toTemplate,
   toggleColumnVisible
 } from "../../public/js/state.js";
@@ -95,6 +98,23 @@ test("createLayout normalizes invalid paper settings to schema defaults", () => 
   assert.deepEqual(layout.paper, { size: "A4", orientation: "landscape" });
 });
 
+test("createLayout normalizes organization settings", () => {
+  const layout = createLayout(fields, {
+    ...template,
+    organization: {
+      groupByFieldId: "reference",
+      sortByFieldId: "missing",
+      sortDirection: "sideways"
+    }
+  });
+
+  assert.deepEqual(layout.organization, {
+    groupByFieldId: "reference",
+    sortByFieldId: "",
+    sortDirection: "asc"
+  });
+});
+
 test("applyTemplateToFields clamps template widths", () => {
   const columns = applyTemplateToFields(fields, {
     ...template,
@@ -139,7 +159,9 @@ test("state changes return new layout objects without mutating session data", ()
   const resized = resizeColumn(renamed, "reference", 320);
   const hidden = toggleColumnVisible(resized, "voiceover");
   const rowHeightChanged = setRowHeight(hidden, MAX_ROW_HEIGHT + 40);
-  const moved = moveColumn(rowHeightChanged, "notes", 1);
+  const grouped = setGroupByField(rowHeightChanged, "reference");
+  const sorted = setSortDirection(setSortByField(grouped, "shot_no"), "desc");
+  const moved = moveColumn(sorted, "notes", 1);
 
   assert.equal(state.session, session);
   assert.notEqual(renamed, state);
@@ -147,6 +169,11 @@ test("state changes return new layout objects without mutating session data", ()
   assert.notEqual(resized.layout, renamed.layout);
   assert.deepEqual(session.fields, originalFields);
   assert.deepEqual(session.rows, originalRows);
+  assert.deepEqual(moved.layout.organization, {
+    groupByFieldId: "reference",
+    sortByFieldId: "shot_no",
+    sortDirection: "desc"
+  });
   assert.equal(moved.layout.columns.find((column) => column.fieldId === "shot_no").label, "镜次");
   assert.equal(moved.layout.columns.find((column) => column.fieldId === "reference").width, 320);
   assert.equal(visibleColumns(moved.layout).some((column) => column.fieldId === "voiceover"), false);
@@ -174,6 +201,11 @@ test("column updates and same-position moves preserve state identity when they a
   assert.equal(resizeColumn(state, "shot_no", 64), state);
   assert.equal(toggleColumnVisible(state, "absent"), state);
   assert.equal(setRowHeight(state, 96), state);
+  assert.equal(setGroupByField(state, "absent"), state);
+  assert.equal(setGroupByField(state, ""), state);
+  assert.equal(setSortByField(state, "absent"), state);
+  assert.equal(setSortByField(state, ""), state);
+  assert.equal(setSortDirection(state, "asc"), state);
   assert.equal(moveColumn(state, "absent", 1), state);
   assert.equal(moveColumn(state, "reference", 1), state);
   assert.equal(moveColumn(state, "shot_no", -10), state);
@@ -181,13 +213,27 @@ test("column updates and same-position moves preserve state identity when they a
 
 test("toTemplate exports layout settings without session-only data", () => {
   const state = createInitialState({ fields, rows: [] }, template);
-  const updated = setColumnType(renameColumn(resizeColumn(state, "reference", 300), "reference", "分镜参考"), "notes", "multiSelect");
+  const updated = setSortDirection(
+    setSortByField(
+      setGroupByField(
+        setColumnType(renameColumn(resizeColumn(state, "reference", 300), "reference", "分镜参考"), "notes", "multiSelect"),
+        "reference"
+      ),
+      "shot_no"
+    ),
+    "desc"
+  );
   const exported = toTemplate(updated.layout, "保存模板");
 
   assert.deepEqual(exported, {
     name: "保存模板",
     paper: { size: "A4", orientation: "landscape" },
     table: { rowHeight: 96, avoidRowPageBreak: true },
+    organization: {
+      groupByFieldId: "reference",
+      sortByFieldId: "shot_no",
+      sortDirection: "desc"
+    },
     columns: [
       { fieldId: "shot_no", label: "镜头号", type: "text", visible: true, width: 64 },
       { fieldId: "reference", label: "分镜参考", type: "image", visible: true, width: 300 },

@@ -151,6 +151,32 @@ test("valid template passes", () => {
   assert.deepEqual(validateTemplate(validTemplate).errors, []);
 });
 
+test("template accepts organization grouping and sorting settings", () => {
+  const template = structuredClone(validTemplate);
+  template.columns.push({ fieldId: "tags", label: "标签", visible: true, width: 120 });
+  template.organization = {
+    groupByFieldId: "tags",
+    sortByFieldId: "shot_no",
+    sortDirection: "desc"
+  };
+
+  assert.deepEqual(validateTemplate(template).errors, []);
+});
+
+test("template validates organization field refs and sort direction", () => {
+  const template = structuredClone(validTemplate);
+  template.organization = {
+    groupByFieldId: "missing",
+    sortByFieldId: "also_missing",
+    sortDirection: "sideways"
+  };
+
+  const errors = validateTemplate(template).errors.join("\n");
+  assert.match(errors, /sortDirection/);
+  assert.match(errors, /groupByFieldId 引用了不存在的列：missing/);
+  assert.match(errors, /sortByFieldId 引用了不存在的列：also_missing/);
+});
+
 test("template column type is optional but validated when present", () => {
   const typedTemplate = structuredClone(validTemplate);
   typedTemplate.columns[0].type = "todo";

@@ -55,6 +55,24 @@
             <p data-missing-warning-text></p>
           </section>
 
+          <section class="settings-section organization-section">
+            <div class="section-heading">
+              <h2>组织</h2>
+            </div>
+            <label class="select-field">
+              <span>分组</span>
+              <select data-group-field aria-label="分组字段"></select>
+            </label>
+            <label class="select-field">
+              <span>排序</span>
+              <select data-sort-field aria-label="排序字段"></select>
+            </label>
+            <div class="segmented-control sort-direction-control" role="group" aria-label="排序方向">
+              <button type="button" data-sort-direction-button="asc">升序</button>
+              <button type="button" data-sort-direction-button="desc">降序</button>
+            </div>
+          </section>
+
           <section class="settings-section field-section">
             <div class="section-heading">
               <h2>字段</h2>

@@ -6,7 +6,8 @@ import {
   MIN_COLUMN_WIDTH,
   MIN_ROW_HEIGHT,
   PAPER_ORIENTATIONS,
-  PAPER_SIZES
+  PAPER_SIZES,
+  SORT_DIRECTIONS
 } from "../shared/schema.mjs";
 
 const DEFAULT_ALLOWED_IMAGE_EXTENSIONS = Object.freeze([".svg", ".png", ".jpg", ".jpeg", ".webp"]);
@@ -204,6 +205,35 @@ export function validateTemplate(template, options = {}) {
       errors.push(`第 ${index + 1} 列宽度必须在 ${MIN_COLUMN_WIDTH} 到 ${MAX_COLUMN_WIDTH} 之间`);
     }
   });
+
+  if (template.organization !== undefined) {
+    if (!isPlainObject(template.organization)) {
+      errors.push("模板 organization 必须是对象");
+    } else {
+      const { groupByFieldId, sortByFieldId, sortDirection } = template.organization;
+      const columnFieldIds = new Set(
+        template.columns
+          .map((column) => (isPlainObject(column) ? column.fieldId : ""))
+          .filter((fieldId) => typeof fieldId === "string" && fieldId.length > 0)
+      );
+
+      if (groupByFieldId !== undefined && typeof groupByFieldId !== "string") {
+        errors.push("模板 organization.groupByFieldId 必须是字符串");
+      }
+      if (sortByFieldId !== undefined && typeof sortByFieldId !== "string") {
+        errors.push("模板 organization.sortByFieldId 必须是字符串");
+      }
+      if (sortDirection !== undefined && !SORT_DIRECTIONS.includes(sortDirection)) {
+        errors.push(`模板 organization.sortDirection 必须是 ${SORT_DIRECTIONS.join(" 或 ")}`);
+      }
+      if (groupByFieldId && !columnFieldIds.has(groupByFieldId)) {
+        errors.push(`模板 organization.groupByFieldId 引用了不存在的列：${groupByFieldId}`);
+      }
+      if (sortByFieldId && !columnFieldIds.has(sortByFieldId)) {
+        errors.push(`模板 organization.sortByFieldId 引用了不存在的列：${sortByFieldId}`);
+      }
+    }
+  }
 
   return { errors };
 }

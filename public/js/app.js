@@ -15,7 +15,10 @@ import {
   renameColumn,
   resizeColumn,
   setColumnType,
+  setGroupByField,
   setRowHeight,
+  setSortByField,
+  setSortDirection,
   toTemplate,
   toggleColumnVisible
 } from "./state.js";
@@ -25,6 +28,7 @@ const selectors = {
   appShell: "[data-app-shell]",
   fieldCount: "[data-field-count]",
   fieldList: "[data-field-list]",
+  groupField: "[data-group-field]",
   missingWarning: "[data-missing-warning]",
   missingWarningText: "[data-missing-warning-text]",
   orientationButton: "[data-orientation-button]",
@@ -37,6 +41,8 @@ const selectors = {
   rowHeightSlider: "[data-row-height-slider]",
   saveTemplate: "[data-save-template]",
   sessionSelect: "[data-session-select]",
+  sortDirectionButton: "[data-sort-direction-button]",
+  sortField: "[data-sort-field]",
   statusText: "[data-status-text]",
   templateCancel: "[data-template-cancel]",
   templateConfirm: "[data-template-confirm]",
@@ -92,6 +98,10 @@ function selectedTitle(items, id) {
 
 function fieldById(fieldId) {
   return state?.session?.fields?.find((field) => field.id === fieldId) ?? null;
+}
+
+function columnTitle(column) {
+  return column.label || fieldById(column.fieldId)?.name || column.fieldId;
 }
 
 function selectedSessionId() {
@@ -173,6 +183,32 @@ function renderFieldControls() {
   els.fieldList.innerHTML = state.layout.columns.map(createFieldRow).join("");
 }
 
+function organizationOptions(emptyLabel, selectedFieldId) {
+  const empty = `<option value=""${selectedFieldId ? "" : " selected"}>${escapeHtml(emptyLabel)}</option>`;
+  const options = state.layout.columns
+    .map((column) => {
+      const selected = column.fieldId === selectedFieldId ? " selected" : "";
+      return `<option value="${escapeAttr(column.fieldId)}"${selected}>${escapeHtml(columnTitle(column))}</option>`;
+    })
+    .join("");
+
+  return `${empty}${options}`;
+}
+
+function renderOrganizationControls() {
+  const organization = state.layout.organization ?? {};
+
+  els.groupField.innerHTML = organizationOptions("不分组", organization.groupByFieldId ?? "");
+  els.sortField.innerHTML = organizationOptions("不排序", organization.sortByFieldId ?? "");
+
+  document.querySelectorAll(selectors.sortDirectionButton).forEach((button) => {
+    const selected = button.dataset.sortDirectionButton === (organization.sortDirection ?? "asc");
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+    button.disabled = !organization.sortByFieldId;
+  });
+}
+
 function renderMissingWarning() {
   const missingColumns = state.layout.missingColumns ?? [];
   els.missingWarning.hidden = missingColumns.length === 0;
@@ -213,6 +249,7 @@ function render() {
   renderOrientationButtons();
   renderRowHeight();
   renderMissingWarning();
+  renderOrganizationControls();
   renderFieldControls();
   renderPreview();
 }
@@ -537,6 +574,28 @@ function bindEvents() {
     renderRowHeight();
     renderPreview();
     scheduleSessionLayoutSave();
+  });
+
+  els.groupField.addEventListener("change", (event) => {
+    state = setGroupByField(state, event.target.value);
+    renderPreview();
+    scheduleSessionLayoutSave();
+  });
+
+  els.sortField.addEventListener("change", (event) => {
+    state = setSortByField(state, event.target.value);
+    renderOrganizationControls();
+    renderPreview();
+    scheduleSessionLayoutSave();
+  });
+
+  document.querySelectorAll(selectors.sortDirectionButton).forEach((button) => {
+    button.addEventListener("click", () => {
+      state = setSortDirection(state, button.dataset.sortDirectionButton);
+      renderOrganizationControls();
+      renderPreview();
+      scheduleSessionLayoutSave();
+    });
   });
 
   els.fieldList.addEventListener("input", (event) => {
