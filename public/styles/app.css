@@ -584,6 +584,105 @@ button:focus-visible {
   font-weight: 680;
 }
 
+.cell-tags-colored {
+  gap: 4px;
+}
+
+.cell-tag-blue {
+  border-color: #bed5f5;
+  background: #e8f1ff;
+  color: #1f5fa8;
+}
+
+.cell-tag-green {
+  border-color: #bddfc5;
+  background: #e9f7ec;
+  color: #27733e;
+}
+
+.cell-tag-orange {
+  border-color: #f3d1ab;
+  background: #fff0dc;
+  color: #9a5512;
+}
+
+.cell-tag-purple {
+  border-color: #d7c4f2;
+  background: #f2ebff;
+  color: #6842a6;
+}
+
+.cell-tag-yellow {
+  border-color: #ead996;
+  background: #fff8d9;
+  color: #7a6413;
+}
+
+.template-dialog {
+  width: min(380px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0;
+  background: var(--chrome-strong);
+  color: var(--text);
+  box-shadow: 0 22px 72px rgb(20 35 33 / 22%);
+}
+
+.template-dialog::backdrop {
+  background: rgb(22 35 33 / 32%);
+}
+
+.template-dialog-panel {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.template-dialog-heading h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 780;
+}
+
+.template-dialog-heading p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.template-name-field {
+  display: grid;
+  gap: 7px;
+}
+
+.template-name-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.template-name-field input {
+  height: 38px;
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+
+.template-name-field input:focus {
+  outline: 2px solid rgb(21 127 115 / 28%);
+  outline-offset: 2px;
+}
+
+.template-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .print-image-list {
   display: grid;
   gap: 7px;

@@ -1,6 +1,14 @@
 import { visibleColumns } from "./layout.js";
 
 const EMPTY = "";
+const COLOR_MARKERS = Object.freeze({
+  "🟦": "blue",
+  "🟩": "green",
+  "🟧": "orange",
+  "🟪": "purple",
+  "🟨": "yellow"
+});
+const COLOR_MARKER_PATTERN = /[🟦🟩🟧🟪🟨]/u;
 
 function escapeHtml(value) {
   return String(value ?? EMPTY)
@@ -28,6 +36,40 @@ function renderTags(value) {
   return `<div class="cell-tags">${tags.map((tag) => `<span class="cell-tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
 }
 
+function splitTagParts(value) {
+  return String(value ?? EMPTY)
+    .split(/\s*\/\s*/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function renderColorTag(label, marker) {
+  const color = COLOR_MARKERS[marker] ?? "neutral";
+  return `<span class="cell-tag cell-tag-${color}">${escapeHtml(label)}</span>`;
+}
+
+function renderColorTaggedText(value) {
+  const text = String(value ?? EMPTY);
+  if (!COLOR_MARKER_PATTERN.test(text)) return null;
+
+  const tags = [];
+  const tokenPattern = /([🟦🟩🟧🟪🟨]+)\s*([^🟦🟩🟧🟪🟨]*)/gu;
+  let match;
+
+  while ((match = tokenPattern.exec(text)) !== null) {
+    const markers = [...match[1]];
+    const parts = splitTagParts(match[2]);
+    if (parts.length === 0) continue;
+
+    parts.forEach((part, index) => {
+      tags.push(renderColorTag(part, markers[index] ?? markers[0]));
+    });
+  }
+
+  if (tags.length === 0) return `<span class="cell-text">${escapeHtml(text.replace(/[🟦🟩🟧🟪🟨]/gu, "").trim())}</span>`;
+  return `<div class="cell-tags cell-tags-colored">${tags.join("")}</div>`;
+}
+
 function renderImages(value, sessionId) {
   const images = normalizeList(value).filter(
     (image) => image && typeof image === "object" && typeof image.path === "string" && image.path.length > 0
@@ -50,6 +92,8 @@ function renderImages(value, sessionId) {
 export function renderCellValue(type, value, sessionId) {
   if (type === "multiSelect") return renderTags(value);
   if (type === "image") return renderImages(value, sessionId);
+  const colorTaggedText = renderColorTaggedText(value);
+  if (colorTaggedText) return colorTaggedText;
   return `<span class="cell-text">${escapeHtml(value)}</span>`;
 }
 

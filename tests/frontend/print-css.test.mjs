@@ -7,4 +7,6 @@ test("print CSS repeats table headers and footers for paged output", async () =>
 
   assert.match(source, /\.print-table\s+thead\s*\{[^}]*display:\s*table-header-group;/s);
   assert.match(source, /\.print-table\s+tfoot\s*\{[^}]*display:\s*table-footer-group;/s);
+  assert.match(source, /\.print-table\s+th\s*\{[^}]*background:\s*#e8efee\s*!important;/s);
+  assert.match(source, /\.print-table\s+th\s*\{[^}]*font-weight:\s*800;/s);
 });

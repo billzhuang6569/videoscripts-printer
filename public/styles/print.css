@@ -60,17 +60,19 @@ body {
 .print-table th,
 .print-table td {
   border: 0.5pt solid #9fa7a5;
-  background: #fff !important;
   vertical-align: top;
 }
 
 .print-table th {
   padding: 5pt 6pt;
-  font-weight: 700;
+  background: #e8efee !important;
+  color: #111;
+  font-weight: 800;
 }
 
 .print-table td {
   padding: 5pt 6pt;
+  background: #fff !important;
 }
 
 .resize-handle {

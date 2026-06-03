@@ -59,6 +59,16 @@ test("renderCellValue renders multi-select values as compact tags", () => {
   assert.doesNotMatch(html, /<input\b/i);
 });
 
+test("renderCellValue turns colored label prefixes into rounded text tags", () => {
+  const html = renderCellValue("text", "🟦🟩 前台 / 工位 / 🟧 荣誉墙", "sample");
+
+  assert.match(html, /class="cell-tags cell-tags-colored"/);
+  assert.match(html, /class="cell-tag cell-tag-blue">前台<\/span>/);
+  assert.match(html, /class="cell-tag cell-tag-green">工位<\/span>/);
+  assert.match(html, /class="cell-tag cell-tag-orange">荣誉墙<\/span>/);
+  assert.doesNotMatch(html, /🟦|🟩|🟧/u);
+});
+
 test("renderCellValue renders image asset routes with captions and contain-friendly classes", () => {
   const html = renderCellValue("image", [{ path: "assets/story board 01.svg", caption: "参考 <图>" }], "sample shoot");
 

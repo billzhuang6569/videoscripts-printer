@@ -78,6 +78,23 @@
       </main>
     </div>
 
+    <dialog class="template-dialog" data-template-dialog aria-labelledby="template-dialog-title">
+      <div class="template-dialog-panel">
+        <div class="template-dialog-heading">
+          <h2 id="template-dialog-title">保存模板</h2>
+          <p>给当前排版起一个名字。</p>
+        </div>
+        <label class="template-name-field">
+          <span>模板名称</span>
+          <input type="text" data-template-name-input autocomplete="off">
+        </label>
+        <div class="template-dialog-actions">
+          <button type="button" class="secondary-action" data-template-cancel>取消</button>
+          <button type="button" class="primary-action" data-template-confirm>保存</button>
+        </div>
+      </div>
+    </dialog>
+
     <script type="module" src="/js/app.js"></script>
   </body>
 </html>

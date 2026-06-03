@@ -37,6 +37,10 @@ const selectors = {
   saveTemplate: "[data-save-template]",
   sessionSelect: "[data-session-select]",
   statusText: "[data-status-text]",
+  templateCancel: "[data-template-cancel]",
+  templateConfirm: "[data-template-confirm]",
+  templateDialog: "[data-template-dialog]",
+  templateNameInput: "[data-template-name-input]",
   templateSelect: "[data-template-select]"
 };
 
@@ -50,6 +54,7 @@ let loadSequence = 0;
 let draggedFieldId = "";
 let fieldPointerDrag = null;
 let sessionLayoutSaveTimer = 0;
+let templateNameResolver = null;
 
 function queryElements() {
   for (const [key, selector] of Object.entries(selectors)) {
@@ -280,7 +285,7 @@ async function handleSaveTemplate() {
   if (!state) return;
 
   const currentName = state.layout.name || selectedTitle(templates, currentTemplateId) || "未命名模板";
-  const name = window.prompt("保存模板名称", currentName);
+  const name = await requestTemplateName(currentName);
   if (!name || name.trim().length === 0) return;
   const trimmedName = name.trim();
 
@@ -291,6 +296,37 @@ async function handleSaveTemplate() {
   await refreshLists();
   els.templateSelect.value = currentTemplateId;
   setStatus("模板已保存", "success");
+}
+
+function requestTemplateName(defaultName) {
+  if (!els.templateDialog || !els.templateNameInput) return Promise.resolve("");
+
+  return new Promise((resolve) => {
+    templateNameResolver = resolve;
+    els.templateNameInput.value = defaultName;
+    if (typeof els.templateDialog.showModal === "function") {
+      els.templateDialog.showModal();
+    } else {
+      els.templateDialog.removeAttribute("hidden");
+    }
+    window.setTimeout(() => {
+      els.templateNameInput.focus();
+      els.templateNameInput.select();
+    }, 0);
+  });
+}
+
+function closeTemplateNameDialog(value) {
+  const resolver = templateNameResolver;
+  templateNameResolver = null;
+
+  if (els.templateDialog?.open) {
+    els.templateDialog.close();
+  } else {
+    els.templateDialog?.setAttribute("hidden", "");
+  }
+
+  resolver?.(value);
 }
 
 function scheduleSessionLayoutSave() {
@@ -523,6 +559,30 @@ function bindEvents() {
 
   els.saveTemplate.addEventListener("click", () => {
     handleSaveTemplate().catch(handleError);
+  });
+
+  els.templateConfirm?.addEventListener("click", () => {
+    closeTemplateNameDialog(els.templateNameInput.value);
+  });
+
+  els.templateCancel?.addEventListener("click", () => {
+    closeTemplateNameDialog("");
+  });
+
+  els.templateNameInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      closeTemplateNameDialog(els.templateNameInput.value);
+    }
+  });
+
+  els.templateDialog?.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeTemplateNameDialog("");
+  });
+
+  els.templateDialog?.addEventListener("close", () => {
+    if (templateNameResolver) closeTemplateNameDialog("");
   });
 
   els.printSurface.addEventListener("pointerdown", handleResizePointerDown);

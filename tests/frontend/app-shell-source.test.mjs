@@ -85,6 +85,10 @@ test("field order drag handle keeps keyboard reordering fallback", async () => {
 test("template save keeps the saved template id and name in current state", async () => {
   const source = await appSource();
 
+  assert.doesNotMatch(source, /window\.prompt|prompt\(/);
+  assert.match(source, /function requestTemplateName\(defaultName\)/);
+  assert.match(source, /data-template-name-input/);
+  assert.match(source, /data-template-confirm/);
   assert.match(source, /currentTemplateId = saved\.id/);
   assert.match(source, /state = savedTemplateState\(state, saved, trimmedName\)/);
 });
