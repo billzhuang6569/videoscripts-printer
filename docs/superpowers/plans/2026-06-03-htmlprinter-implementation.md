@@ -104,7 +104,6 @@ Create `package.json`:
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/server/server.mjs",
     "test": "node --test \"tests/**/*.test.mjs\""
   }
 }
@@ -727,6 +726,7 @@ Expected: commit succeeds.
 ## Task 4: Local HTTP Service
 
 **Files:**
+- Modify: `package.json`
 - Create: `src/server/mime.mjs`
 - Create: `src/server/server.mjs`
 - Create: `tests/server/server.test.mjs`
@@ -821,7 +821,24 @@ export function mimeTypeFor(filePath) {
 }
 ```
 
-- [ ] **Step 4: Implement HTTP server**
+- [ ] **Step 4: Add start script**
+
+Modify `package.json`:
+
+```json
+{
+  "name": "htmlprinter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server/server.mjs",
+    "test": "node --test \"tests/**/*.test.mjs\""
+  }
+}
+```
+
+- [ ] **Step 5: Implement HTTP server**
 
 Create `src/server/server.mjs`:
 
@@ -916,7 +933,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 }
 ```
 
-- [ ] **Step 5: Run server tests**
+- [ ] **Step 6: Run server tests**
 
 Run:
 
@@ -926,12 +943,12 @@ node --test tests/server/server.test.mjs
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 Run:
 
 ```bash
-git add src/server/mime.mjs src/server/server.mjs tests/server/server.test.mjs
+git add package.json src/server/mime.mjs src/server/server.mjs tests/server/server.test.mjs
 git commit -m "feat: serve sessions templates and assets"
 ```
 
